@@ -102,8 +102,14 @@ def parse_article(html):
         if m:
             feats.append(key + ": " + m.group(1).strip())
     d["features"] = " / ".join(feats)[:300]
-    # 写真URL(許諾後のみ使用)
-    d["photos"] = re.findall(r'src="((?:https?://www\.city\.kumamoto\.jp)?/[^"]+\.(?:jpg|jpeg|png))"', html, re.I)[:3]
+    # 写真URL: og:image(記事のメイン画像・最も確実)→記事フォルダ内のimgの順
+    photos = []
+    m = re.search(r'property="og:image"\s+content="([^"]+)"', html) or \
+        re.search(r'content="([^"]+)"\s+property="og:image"', html)
+    if m:
+        photos.append(m.group(1))
+    photos += re.findall(r'src="([^"]*kiji\d+[^"]*\.(?:jpe?g|png))"', html, re.I)
+    d["photos"] = photos[:4]
     return d
 
 
@@ -135,12 +141,28 @@ def photo_mode():
     return os.environ.get("CITY_PHOTOS", "1").strip()
 
 
-def first_photo_url(art):
+def norm_url(p, kiji_id=""):
+    p = p.replace("&amp;", "&").strip()
+    if p.startswith("//"):
+        p = "https:" + p
+    elif p.startswith("/"):
+        p = BASE + p
+    elif not p.startswith("http"):
+        p = BASE + "/doubutuaigo/" + kiji_id + "/" + p if kiji_id else ""
+    return p if p.startswith(BASE) else ""
+
+
+def first_photo_url(art, kiji_id=""):
     for p in art.get("photos", []):
-        url = p if p.startswith("http") else BASE + p
-        if url.startswith(BASE):  # 市サイトの画像のみ許可
+        url = norm_url(p, kiji_id)
+        if url:
             return url
     return ""
+
+
+def photo_looks_valid(url, kiji_id):
+    # 記事自身の画像(kijiフォルダ or UploadFileOutput)以外は無効とみなす
+    return bool(url) and (kiji_id in url or "UploadFileOutput" in url)
 
 
 def ensure_columns(conn):
@@ -190,14 +212,14 @@ def sync(dry_run=False, with_photos=False):
                     if photo_mode() == "1":
                         row = conn.execute("SELECT photo_ext FROM pets WHERE source_url=? AND source='city'",
                                            (src_url,)).fetchone()
-                        if row is not None and not row["photo_ext"]:
+                        if row is not None and not photo_looks_valid(row["photo_ext"], it["kiji_id"]):
                             try:
                                 art2 = parse_article(fetch(it["url"]))
                                 time.sleep(FETCH_INTERVAL)
-                                purl = first_photo_url(art2)
+                                purl = first_photo_url(art2, it["kiji_id"])
+                                conn.execute("UPDATE pets SET photo_ext=? WHERE source_url=? AND source='city'",
+                                             (purl, src_url))
                                 if purl:
-                                    conn.execute("UPDATE pets SET photo_ext=? WHERE source_url=? AND source='city'",
-                                                 (purl, src_url))
                                     print("  [写真補完] " + it["title"])
                             except Exception as e:
                                 print("  [写真補完skip]", e)
@@ -211,7 +233,7 @@ def sync(dry_run=False, with_photos=False):
             lat, lng = guess_coord(art.get("place", ""))
             event_at = parse_event_at(art.get("event_date", "")) or datetime.now(JST).strftime("%Y-%m-%dT12:00")
             photos = []
-            photo_ext = first_photo_url(art) if photo_mode() == "1" else ""
+            photo_ext = first_photo_url(art, it["kiji_id"]) if photo_mode() == "1" else ""
             if with_photos or photo_mode() == "2":
                 # TODO: センター許諾後に有効化。市サイトの画像を取得して /uploads に保存する
                 pass
