@@ -1,0 +1,1286 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>くまもとペット捜索マップ|迷子の犬・猫と飼い主さんを繋ぐ無料マップ</title>
+<meta name="description" content="令和8年熊本地震で迷子になった犬・猫の捜索情報と保護情報を1つの地図で繋ぐ、完全無料の掲示板です。会員登録不要。">
+<meta property="og:title" content="くまもとペット捜索マップ|迷子の犬・猫と飼い主さんを繋ぐ">
+<meta property="og:description" content="令和8年熊本地震対応。「さがしています」と「保護しています」を1つの地図で。目撃投稿・捜索範囲の共有・チラシ作成まで完全無料。">
+<meta property="og:type" content="website">
+<meta property="og:image" content="/ogp.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="くまもとペット捜索マップ">
+<meta name="twitter:description" content="令和8年熊本地震対応。迷子の犬・猫と飼い主さんを繋ぐ無料マップ。">
+<meta name="twitter:image" content="/ogp.png">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --pine:#24422F; --pine-deep:#16281C;
+  --moss:#F0F2E8; --card:#FFFFFF;
+  --brass:#B8862B; --brass-light:#EBD08A; --brass-deep:#8F671C;
+  --clay:#BC3F26; --clay-deep:#93301C;
+  --sky:#4A6B94;
+  --found:#3E6B8F; --found-light:#E5EDF4;
+  --ink:#1E241C; --ink-soft:#67705E;
+  --line:#DDE2D0;
+  --radius:16px;
+  --shadow:0 2px 12px rgba(22,40,28,.09);
+  --fd:'Zen Maru Gothic','Hiragino Maru Gothic ProN','Yu Gothic',sans-serif;
+  --fb:'Noto Sans JP','Hiragino Sans','Yu Gothic',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:var(--fb);background:var(--moss);color:var(--ink);line-height:1.85;font-size:16px}
+body.big-text{font-size:19px}
+body.big-text .btn{font-size:18px;padding:16px 26px}
+body.big-text input,body.big-text select,body.big-text textarea{font-size:19px}
+body.big-text .hint{font-size:14px}
+body.big-text .spec{font-size:16px}
+img{max-width:100%;display:block}
+a{color:var(--pine)}
+button{font-family:inherit;cursor:pointer}
+input,select,textarea{font-family:inherit;font-size:17px;width:100%;padding:14px;border:2px solid var(--line);border-radius:12px;background:#fff;color:var(--ink)}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--brass);outline-offset:1px;border-color:var(--brass)}
+label{display:block;font-weight:700;font-size:15px;margin:18px 0 6px;color:var(--pine-deep)}
+label .opt{font-weight:400;color:var(--ink-soft);font-size:11.5px}
+
+.quake-band{background:var(--clay-deep);color:#fff;text-align:center;font-size:11.5px;padding:6px 12px;letter-spacing:.05em}
+.quake-band b{color:#FFD9A8}
+
+header{background:var(--pine);color:#fff;position:sticky;top:0;z-index:1100;box-shadow:var(--shadow)}
+.hwrap{max-width:980px;margin:0 auto;padding:9px 16px;display:flex;align-items:center;gap:10px}
+.logo{display:flex;align-items:center;gap:8px;text-decoration:none;color:#fff}
+.logo b{font-family:var(--fd);font-weight:900;font-size:16.5px;letter-spacing:.02em}
+.logo small{display:block;font-size:9px;opacity:.72;letter-spacing:.14em}
+nav{margin-left:auto;display:flex;gap:4px}
+nav a{color:#fff;text-decoration:none;font-size:13.5px;padding:9px 11px;border-radius:8px;font-weight:700;white-space:nowrap}
+nav button.ft{background:rgba(255,255,255,.16);border:none;color:#fff;font-size:12.5px;padding:7px 12px;border-radius:999px;font-weight:700;white-space:nowrap}
+nav a:hover{background:rgba(255,255,255,.12)}
+nav a.cta{background:var(--clay);font-weight:700}
+
+main{max-width:980px;margin:0 auto;padding:0 16px 80px}
+section{margin:24px 0}
+h1{font-family:var(--fd);font-weight:900;font-size:clamp(24px,5.5vw,36px);line-height:1.35;color:var(--pine-deep)}
+h2{font-family:var(--fd);font-weight:900;font-size:19px;color:var(--pine-deep);display:flex;align-items:center;gap:9px;margin-bottom:12px}
+h2::before{content:"";width:13px;height:13px;border-radius:50%;background:var(--brass);box-shadow:0 0 0 3px var(--brass-light);flex:none}
+.hint{font-size:13px;color:var(--ink-soft)}
+.step{display:flex;align-items:center;gap:10px;margin:26px 0 4px;font-family:var(--fd);font-weight:900;font-size:17px;color:var(--pine-deep)}
+.step span{width:34px;height:34px;border-radius:50%;background:var(--brass);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:17px;flex:none;box-shadow:0 0 0 3px var(--brass-light)}
+
+.hero{padding:32px 0 8px}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:11px;letter-spacing:.16em;color:var(--brass-deep);font-weight:700;background:#F7EDD3;border:1px solid #E8D9AC;padding:3px 12px;border-radius:999px}
+.hero p{color:var(--ink-soft);max-width:52ch;font-size:14.5px;margin-top:10px}
+.hero-actions{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap}
+.stats{display:flex;gap:24px;margin-top:22px;flex-wrap:wrap}
+.stat b{font-family:var(--fd);font-weight:900;font-size:24px;color:var(--pine-deep)}
+.stat b em{font-style:normal;font-size:13px;color:var(--brass-deep)}
+.stat span{display:block;font-size:11px;color:var(--ink-soft)}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:14px 24px;border-radius:999px;border:none;font-weight:700;font-size:16px;text-decoration:none;transition:transform .12s;min-height:48px}
+.btn:active{transform:scale(.97)}
+.btn-primary{background:var(--clay);color:#fff;box-shadow:0 4px 12px rgba(188,63,38,.3)}
+.btn-found{background:var(--found);color:#fff;box-shadow:0 4px 12px rgba(62,107,143,.3)}
+.btn-secondary{background:var(--pine);color:#fff}
+.btn-brass{background:var(--brass);color:#fff}
+.btn-ghost{background:#fff;border:1.5px solid var(--line);color:var(--pine-deep)}
+.btn-ghost.active{background:var(--pine-deep);color:#fff;border-color:var(--pine-deep)}
+.btn.sm{font-size:14.5px;padding:11px 18px;min-height:44px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* タブ */
+.board-tabs{display:flex;gap:8px;margin:18px 0 14px;flex-wrap:wrap}
+.board-tabs button{border:2px solid var(--line);background:#fff;border-radius:999px;padding:13px 24px;font-weight:700;font-size:16px;color:var(--ink-soft);min-height:48px}
+.board-tabs button.on-lost{background:var(--clay);border-color:var(--clay);color:#fff}
+.board-tabs button.on-found{background:var(--found);border-color:var(--found);color:#fff}
+.filter-row{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.filter-row button{border:1px solid var(--line);background:#fff;border-radius:999px;padding:4px 14px;font-size:12px;font-weight:600;color:var(--ink-soft)}
+.filter-row button.on{background:var(--pine-deep);border-color:var(--pine-deep);color:#fff}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:15px}
+.pet-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;text-decoration:none;color:var(--ink);box-shadow:var(--shadow);position:relative;transition:transform .14s}
+.pet-card:hover{transform:translateY(-3px)}
+.pet-photo{height:165px;background:linear-gradient(145deg,#E7E9DB,#DCE0CC);display:flex;align-items:center;justify-content:center;overflow:hidden}
+.pet-photo img{width:100%;height:100%;object-fit:cover}
+.pet-photo .noimg{font-size:44px;opacity:.5}
+.pet-body{padding:0 15px 14px}
+.name-tag{display:inline-flex;align-items:center;gap:7px;background:linear-gradient(165deg,var(--brass-light),var(--brass));color:#3A2A08;font-family:var(--fd);font-weight:900;font-size:15px;padding:4px 15px 4px 10px;border-radius:999px;box-shadow:inset 0 1.5px 2px rgba(255,255,255,.6),0 2px 5px rgba(58,42,8,.3);margin-top:-16px;position:relative;border:1px solid var(--brass-deep)}
+.name-tag::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--card);box-shadow:inset 0 1px 2px rgba(0,0,0,.4)}
+.name-tag.found-tag{background:linear-gradient(165deg,#C8DCEC,#8FB3CE);color:#1E3A52;border-color:#5E82A3}
+.pet-meta{font-size:12.5px;color:var(--ink-soft);margin-top:8px}
+.pet-place{font-size:12.5px;margin-top:4px;font-weight:500}
+.pet-place time{color:var(--ink-soft);font-weight:400}
+.badge{display:inline-block;font-size:11px;font-weight:700;padding:2px 11px;border-radius:999px;color:#fff;letter-spacing:.04em}
+.badge.searching{background:var(--clay)}
+.badge.sheltering{background:var(--found)}
+.badge.reunited{background:var(--pine)}
+.badge.closed{background:var(--ink-soft)}
+.badge-corner{position:absolute;top:10px;left:10px;z-index:5;box-shadow:0 2px 5px rgba(0,0,0,.2)}
+.sp-chip{position:absolute;top:10px;right:10px;background:rgba(255,255,255,.94);font-size:13px;padding:2px 9px;border-radius:999px;box-shadow:0 1px 4px rgba(0,0,0,.14)}
+.empty{background:var(--card);border:1.5px dashed var(--line);border-radius:var(--radius);padding:32px 20px;text-align:center;color:var(--ink-soft)}
+
+.panel{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px 18px;box-shadow:var(--shadow)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+@media(max-width:560px){.row2{grid-template-columns:1fr}}
+.check-row{display:flex;gap:16px;margin-top:8px;flex-wrap:wrap}
+.check-row label{display:flex;align-items:center;gap:6px;margin:0;font-weight:500;font-size:14px}
+.check-row input{width:auto}
+.kind-toggle{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px}
+.kind-toggle button{border:2.5px solid var(--line);background:#fff;border-radius:14px;padding:18px 8px;font-weight:700;font-size:16px;color:var(--ink-soft);line-height:1.5}
+.kind-toggle button.on-lost{border-color:var(--clay);background:#FBEFEB;color:var(--clay-deep)}
+.kind-toggle button.on-found{border-color:var(--found);background:var(--found-light);color:#1E3A52}
+.sp-toggle{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px}
+.sp-toggle button{border:2.5px solid var(--line);background:#fff;border-radius:14px;padding:15px 6px;font-weight:700;font-size:17px;color:var(--ink-soft)}
+.sp-toggle button.on{border-color:var(--pine);background:#EFF4EA;color:var(--pine-deep)}
+.map-box{height:300px;border-radius:11px;border:1.5px solid var(--line);margin-top:6px;z-index:0}
+.map-box.painting{cursor:crosshair}
+.photo-thumbs{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+.photo-thumbs .thumb{width:74px;height:74px;border-radius:8px;object-fit:cover;border:1.5px solid var(--line)}
+.honeypot{position:absolute;left:-9999px;top:-9999px;height:1px;width:1px;overflow:hidden}
+.msg{padding:12px 14px;border-radius:10px;font-size:14px;margin:13px 0;display:none}
+.msg.err{background:#F7E4E0;color:var(--clay-deep);display:block}
+.msg.ok{background:#E3EEDF;color:var(--pine-deep);display:block}
+
+.detail-head{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
+.detail-photos{width:300px;flex:none;max-width:100%}
+.detail-photos .main-photo{width:100%;height:230px;object-fit:cover;border-radius:var(--radius);border:1px solid var(--line)}
+.detail-photos .subs{display:flex;gap:6px;margin-top:6px}
+.detail-photos .subs img{width:70px;height:70px;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
+.detail-info{flex:1;min-width:250px}
+.spec{width:100%;border-collapse:collapse;font-size:14px;margin-top:8px}
+.spec tr{border-bottom:1px dashed var(--line)}
+.spec tr:last-child{border:none}
+.spec th{text-align:left;color:var(--ink-soft);font-weight:500;padding:6px 12px 6px 0;white-space:nowrap;vertical-align:top;font-size:12px}
+.spec td{padding:6px 0;font-weight:500}
+.action-bar{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
+.legend{display:flex;gap:13px;font-size:11.5px;color:var(--ink-soft);margin-top:8px;flex-wrap:wrap;align-items:center}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:4px;vertical-align:-1px}
+.legend i.sq{border-radius:3px}
+.radius-note{font-size:12px;color:var(--ink-soft);background:#F7F8F1;border:1px solid var(--line);border-radius:10px;padding:10px 13px;margin-top:9px}
+.radius-note b{color:var(--pine-deep)}
+.tips-box{background:#F7EDD3;border:1.5px solid #E0C27A;border-radius:12px;padding:13px 15px;font-size:13px;margin-top:12px}
+.tips-box h3{font-family:var(--fd);font-size:14px;color:var(--brass-deep);margin-bottom:5px}
+.tips-box li{margin-left:18px;margin-bottom:3px}
+.admin-panel{background:#FBF3DD;border:1.5px solid var(--brass);border-radius:var(--radius);padding:16px;margin:16px 0}
+.admin-panel h3{font-family:var(--fd);font-size:15px;color:#7A5A14;margin-bottom:8px}
+.paint-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0 6px}
+.paint-bar .btn{font-size:12.5px;padding:8px 14px}
+.coverage{font-size:12px;color:var(--pine-deep);background:#E3EEDF;border-radius:999px;padding:4px 12px;font-weight:700}
+.paint-help{font-size:12px;color:var(--ink-soft);width:100%}
+
+.match-card{display:flex;gap:11px;align-items:center;background:var(--found-light);border:1px solid #C3D4E2;border-radius:12px;padding:10px 13px;margin-bottom:8px;text-decoration:none;color:var(--ink)}
+.match-card.lostside{background:#FBEFEB;border-color:#E5C3B8}
+.match-card img,.match-card .noimg{width:52px;height:52px;border-radius:9px;object-fit:cover;flex:none;background:#DCE0CC;display:flex;align-items:center;justify-content:center;font-size:22px}
+.match-card b{font-size:13.5px}
+.match-card p{font-size:11.5px;color:var(--ink-soft)}
+
+.gen-box{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin-top:10px;white-space:pre-wrap;font-size:14px;position:relative}
+.copy-btn{position:absolute;top:8px;right:8px;font-size:11px;padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:#fff}
+
+.checklist li{list-style:none;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:11px 13px;margin-bottom:8px;display:flex;gap:10px;align-items:flex-start;font-size:14px}
+.checklist input{width:18px;height:18px;margin-top:4px;flex:none}
+.checklist li.done{opacity:.55;text-decoration:line-through}
+.office{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;margin-bottom:10px}
+.office b{font-family:var(--fd);color:var(--pine-deep)}
+.office p{font-size:13px;color:var(--ink-soft);margin-top:3px}
+.office .tel{font-size:16px;font-weight:700;color:var(--pine-deep)}
+.warn-box{background:#FBEFEB;border:1.5px solid var(--clay);border-radius:12px;padding:13px 15px;font-size:13px;color:#7C2A18;margin:14px 0}
+.warn-box b{font-family:var(--fd)}
+
+.done-wrap{max-width:560px;margin:36px auto;text-align:center}
+.token-box{background:#fff;border:1.5px dashed var(--brass);border-radius:10px;padding:12px;font-family:monospace;font-size:12px;word-break:break-all;margin:14px 0;text-align:left}
+
+#flyer-sheet{background:#fff;width:100%;max-width:640px;margin:16px auto;padding:34px 30px;border:1px solid var(--line);box-shadow:var(--shadow);color:#1a1a1a}
+.flyer-catch{font-family:var(--fd);font-weight:900;color:var(--clay);font-size:clamp(36px,8.5vw,56px);text-align:center;letter-spacing:.08em;line-height:1.25;border:5px solid var(--clay);border-radius:6px;padding:6px 10px}
+.flyer-catch.found{color:var(--found);border-color:var(--found)}
+.flyer-sub{text-align:center;font-weight:700;font-size:15px;margin-top:8px}
+.flyer-photo{width:100%;max-height:320px;object-fit:contain;margin:14px auto;background:#f2f2f2;border-radius:6px}
+.flyer-spec{width:100%;border-collapse:collapse;font-size:14px;margin-top:6px}
+.flyer-spec th{background:#F0EBDD;text-align:left;padding:6px 10px;width:110px;border:1px solid #ccc;font-family:var(--fd)}
+.flyer-spec td{padding:6px 10px;border:1px solid #ccc}
+.flyer-note{font-size:13px;background:#FDF1EE;border:1.5px solid var(--clay);border-radius:6px;padding:9px 12px;margin-top:12px;font-weight:700}
+.flyer-foot{display:flex;gap:14px;align-items:center;margin-top:14px}
+.flyer-contact{flex:1;font-size:14px}
+.flyer-contact b{font-size:17px}
+.flyer-qr{width:96px;height:96px;flex:none}
+@media print{
+  body{background:#fff}
+  header,.no-print,footer,.quake-band{display:none!important}
+  main{max-width:none;padding:0}
+  #flyer-sheet{border:none;box-shadow:none;max-width:none;padding:10mm}
+  @page{size:A4 portrait;margin:8mm}
+}
+.leaflet-tooltip.pin-label{background:var(--pine-deep);color:#fff;border:none;border-radius:8px;font-family:var(--fd);font-weight:700;font-size:11px;padding:3px 10px}
+.leaflet-tooltip.pin-label::before{border-top-color:var(--pine-deep)}
+
+
+/* ---------- スマホ固定ボトムバー ---------- */
+.bottom-bar{position:fixed;left:0;right:0;bottom:0;z-index:1200;background:rgba(255,255,255,.97);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-top:1.5px solid var(--line);padding:10px 12px calc(10px + env(safe-area-inset-bottom));display:flex;gap:8px;box-shadow:0 -4px 16px rgba(22,40,28,.1)}
+.bottom-bar .btn{flex:1;font-size:15px;padding:14px 6px;min-height:52px}
+@media(min-width:641px){.bottom-bar{display:none}}
+/* ---------- スマホ最適化 ---------- */
+@media(max-width:640px){
+  .hwrap{padding:8px 12px;gap:6px}
+  .logo b{font-size:14px}
+  .logo small{display:none}
+  nav{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  nav a{font-size:12.5px;padding:9px 8px}
+  nav button.ft{font-size:11px;padding:6px 10px}
+  main{padding:0 12px 130px}
+  .hero{padding:22px 0 6px}
+  h1{font-size:27px}
+  .hero p{font-size:14px}
+  .hero-actions{flex-direction:column}
+  .hero-actions .btn{width:100%;font-size:17px;padding:17px}
+  .stats{gap:0;justify-content:space-between;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 16px}
+  .stat{text-align:center}
+  .board-tabs{position:sticky;top:53px;z-index:900;background:var(--moss);padding:10px 0 8px;margin:8px 0 6px}
+  .board-tabs button{flex:1;padding:12px 8px;font-size:14.5px}
+  .grid{grid-template-columns:1fr 1fr;gap:10px}
+  .pet-photo{height:118px}
+  .pet-body{padding:0 10px 11px}
+  .name-tag{font-size:12.5px;padding:3px 11px 3px 8px}
+  .pet-meta,.pet-place{font-size:11px}
+  .badge-corner{font-size:9.5px;padding:2px 8px}
+  .map-box{height:52vh;min-height:300px;border-radius:14px}
+  .panel{padding:15px 13px;border-radius:14px}
+  .paint-bar .btn{flex:1;font-size:13.5px;padding:11px 4px}
+  .detail-photos{width:100%}
+  .action-bar .btn{flex:1}
+  .spec th{font-size:11px;padding-right:8px}
+  .kind-toggle button{padding:15px 6px;font-size:15px}
+  .tips-box{font-size:12.5px}
+  #flyer-sheet{padding:22px 16px}
+}
+footer{background:var(--pine-deep);color:#C9D4BE;font-size:12px;padding:24px 16px;text-align:center;margin-top:50px}
+footer a{color:#E4C878}
+@media(prefers-reduced-motion:no-preference){
+  .fade-in{animation:fadein .35s ease both}
+  @keyframes fadein{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+}
+.hidden{display:none!important}
+.loading{text-align:center;color:var(--ink-soft);padding:30px}
+</style>
+</head>
+<body>
+<div class="quake-band">🐾 <b>令和8年(2026年)熊本地震 対応</b> — このサイトは完全無料・非営利で運営しています。緊急の人命救助は119へ。</div>
+<header>
+  <div class="hwrap">
+    <a class="logo" href="#/">
+      <svg width="32" height="32" viewBox="0 0 40 40" aria-hidden="true">
+        <circle cx="20" cy="22" r="16" fill="#EBD08A" stroke="#8F671C" stroke-width="1.6"/>
+        <circle cx="20" cy="9.5" r="3.4" fill="none" stroke="#8F671C" stroke-width="2.6"/>
+        <ellipse cx="16" cy="19" rx="2" ry="2.6" fill="#3A2A08"/>
+        <ellipse cx="24" cy="19" rx="2" ry="2.6" fill="#3A2A08"/>
+        <ellipse cx="20" cy="25" rx="2.6" ry="2" fill="#3A2A08"/>
+        <path d="M16.5 28 q3.5 3 7 0" stroke="#3A2A08" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+      </svg>
+      <span><b>くまもとペット捜索マップ</b><small>KUMAMOTO PET SEARCH MAP</small></span>
+    </a>
+    <nav>
+      <button class="ft" id="font-toggle">字を大きく</button>
+      <a href="#/info">窓口・注意</a>
+      <a href="#/register" class="cta">登録する</a>
+    </nav>
+  </div>
+</header>
+
+<main id="app"></main>
+
+<footer>
+  <p>くまもとペット捜索マップ — 令和8年熊本地震 災害対応・完全無料</p>
+  <p style="margin-top:6px">掲載情報は投稿者によるものです。悪質な投稿は各ページの通報ボタンからお知らせください。</p>
+  <p style="margin-top:6px">運営: 合同会社CRK(熊本市) / <a href="#/terms">利用規約・プライバシー</a></p>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+"use strict";
+var app = document.getElementById("app");
+var KUMAMOTO_CENTER = [32.8032, 130.7079];
+var GRID_LAT = 0.00135, GRID_LNG = 0.00162;
+var SP_JP = {dog:"犬", cat:"猫", other:"その他"};
+var SP_EMOJI = {dog:"🐕", cat:"🐈", other:"🐾"};
+var SIZE_JP = {small:"小型", medium:"中型", large:"大型"};
+var STATUS_JP = {searching:"さがしています", sheltering:"保護しています", reunited:"再会できました", closed:"掲載終了"};
+
+/* ---------- ユーティリティ ---------- */
+function esc(s){ var d=document.createElement("div"); d.textContent=s==null?"":String(s); return d.innerHTML; }
+function api(path, opts){
+  opts = opts || {};
+  return fetch(path, {method:opts.method||"GET", headers:{"Content-Type":"application/json"},
+    body:opts.body?JSON.stringify(opts.body):undefined
+  }).then(function(r){ return r.json().then(function(j){ if(!r.ok) throw new Error(j.error||"エラーが発生しました"); return j; }); });
+}
+function fmtDate(iso){
+  if(!iso) return "";
+  var d = new Date(iso);
+  if(isNaN(d)) return iso;
+  return (d.getMonth()+1)+"/"+d.getDate()+" "+("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2);
+}
+function hoursSince(iso){ return Math.max(0,(Date.now()-new Date(iso).getTime())/3600000); }
+/* 捜索推奨半径(km): 種別×経過時間。猫は近くに潜む習性のため極小 */
+function searchRadiusKm(species, size, hours){
+  if(species === "cat") return Math.min(0.05 + 0.1*(hours/24), 0.5);
+  if(species === "dog"){
+    var p = {small:[0.5,1.0,3], medium:[1,2,5], large:[1.5,3.5,8]}[size] || [1,2,5];
+    return Math.min(p[0] + p[1]*(hours/24), p[2]);
+  }
+  return Math.min(0.3 + 0.5*(hours/24), 2);
+}
+function speciesLabel(p){
+  return SP_JP[p.species] + (p.species==="dog" ? "("+(SIZE_JP[p.size]||"")+")" : "");
+}
+function copyText(t, btn){
+  navigator.clipboard.writeText(t).then(function(){
+    var o=btn.textContent; btn.textContent="コピーしました"; setTimeout(function(){btn.textContent=o;},1500);
+  });
+}
+function nowLocal(){
+  var n = new Date(); n.setMinutes(n.getMinutes()-n.getTimezoneOffset());
+  return n.toISOString().slice(0,16);
+}
+function resizeImage(file){
+  return new Promise(function(resolve, reject){
+    var img = new Image(), url = URL.createObjectURL(file);
+    img.onload = function(){
+      var max=1200, w=img.width, h=img.height;
+      if(Math.max(w,h)>max){ var r=max/Math.max(w,h); w=Math.round(w*r); h=Math.round(h*r); }
+      var c=document.createElement("canvas"); c.width=w; c.height=h;
+      c.getContext("2d").drawImage(img,0,0,w,h);
+      URL.revokeObjectURL(url);
+      resolve(c.toDataURL("image/jpeg",.82));
+    };
+    img.onerror=function(){ URL.revokeObjectURL(url); reject(new Error("この写真を読み込めませんでした。iPhoneの方は「設定→カメラ→フォーマット→互換性優先」にするか、スクリーンショットを撮ってそれを選んでください")); };
+    img.src=url;
+  });
+}
+
+/* ---------- 文字サイズ切替(高齢の方向け) ---------- */
+(function(){
+  var btn = document.getElementById("font-toggle");
+  function apply(on){
+    document.body.classList.toggle("big-text", on);
+    btn.textContent = on ? "字を標準に" : "字を大きく";
+  }
+  var saved = localStorage.getItem("kpm-bigtext") === "1";
+  apply(saved);
+  btn.addEventListener("click", function(){
+    saved = !saved;
+    localStorage.setItem("kpm-bigtext", saved ? "1" : "0");
+    apply(saved);
+  });
+})();
+
+/* ---------- ルーター ---------- */
+var maps = [];
+function destroyMaps(){ maps.forEach(function(m){ try{m.remove();}catch(e){} }); maps=[]; }
+function route(){
+  destroyMaps(); window.scrollTo(0,0);
+  var h = location.hash.replace(/^#/,"") || "/";
+  var m;
+  if(h === "/") return viewHome();
+  if(h === "/register" || h === "/register/found") return viewRegister(h==="/register/found"?"found":"lost");
+  if(h === "/info") return viewInfo();
+  if(h === "/admin") return viewAdmin();
+  if(h === "/terms") return viewTerms();
+  if((m = h.match(/^\/done\/([a-z0-9]{8})\/(.+)$/))) return viewDone(m[1], m[2]);
+  if((m = h.match(/^\/pet\/([a-z0-9]{8})(?:\?token=(.+))?$/))) return viewDetail(m[1], m[2]||"");
+  if((m = h.match(/^\/flyer\/([a-z0-9]{8})$/))) return viewFlyer(m[1]);
+  viewHome();
+}
+window.addEventListener("hashchange", route);
+
+/* ---------- トップ ---------- */
+var homeState = {kind:"lost", species:""};
+function viewHome(){
+  app.innerHTML =
+  '<div class="hero fade-in">'+
+    '<span class="eyebrow">🐾 令和8年熊本地震 対応 / 完全無料・会員登録不要</span>'+
+    '<h1>はぐれた子と、<br>もう一度会うために。</h1>'+
+    '<p>地震でいなくなった犬・猫と、保護してくれた人を、1つの地図でつなぎます。使い方はかんたん。ぜんぶ無料です。</p>'+
+    '<div class="hero-actions">'+
+      '<a class="btn btn-primary" href="#/register">🔍 いなくなった子を さがす</a>'+
+      '<a class="btn btn-found" href="#/register/found">🏠 保護した子を 知らせる</a>'+
+    '</div>'+
+    '<div class="stats" id="stats"></div>'+
+  '</div>'+
+  '<div class="board-tabs">'+
+    '<button id="tab-lost">🔍 さがしています</button>'+
+    '<button id="tab-found">🏠 保護しています</button>'+
+  '</div>'+
+  '<div class="filter-row" id="sp-filter">'+
+    '<button data-sp="">すべて</button><button data-sp="dog">🐕 犬</button><button data-sp="cat">🐈 猫</button><button data-sp="other">🐾 その他</button>'+
+  '</div>'+
+  '<div id="pet-list" class="loading">読み込み中…</div>'+
+  '<section style="margin-top:34px"><h2>再会できた子たち</h2><div id="reunited-list" class="loading">読み込み中…</div></section>';
+
+  api("/api/stats").then(function(s){
+    document.getElementById("stats").innerHTML =
+      '<div class="stat"><b>'+s.lost_active+'<em>件</em></b><span>さがしています</span></div>'+
+      '<div class="stat"><b>'+s.found_active+'<em>件</em></b><span>保護しています</span></div>'+
+      '<div class="stat"><b>'+s.reunited+'<em>件</em></b><span>再会できました</span></div>';
+  }).catch(function(){});
+
+  function refreshTabs(){
+    document.getElementById("tab-lost").className = homeState.kind==="lost" ? "on-lost" : "";
+    document.getElementById("tab-found").className = homeState.kind==="found" ? "on-found" : "";
+    Array.prototype.forEach.call(document.querySelectorAll("#sp-filter button"), function(b){
+      b.classList.toggle("on", b.getAttribute("data-sp")===homeState.species);
+    });
+  }
+  function loadList(){
+    refreshTabs();
+    var el = document.getElementById("pet-list");
+    el.className = "loading"; el.textContent = "読み込み中…";
+    var q = "/api/pets?kind="+homeState.kind+(homeState.species?"&species="+homeState.species:"");
+    api(q).then(function(res){
+      if(!res.pets.length){
+        el.className = "empty";
+        el.innerHTML = homeState.kind==="lost"
+          ? "現在この条件の掲載はありません。<br>迷子になったら「迷子のペットを登録」から掲載できます。"
+          : "現在この条件の保護情報はありません。<br>迷子の子を保護したら「保護しています」から掲載をお願いします。";
+        return;
+      }
+      el.className = "grid";
+      el.innerHTML = res.pets.map(petCard).join("");
+    }).catch(function(e){ el.className="empty"; el.textContent = e.message; });
+  }
+  document.getElementById("tab-lost").addEventListener("click", function(){ homeState.kind="lost"; loadList(); });
+  document.getElementById("tab-found").addEventListener("click", function(){ homeState.kind="found"; loadList(); });
+  Array.prototype.forEach.call(document.querySelectorAll("#sp-filter button"), function(b){
+    b.addEventListener("click", function(){ homeState.species = b.getAttribute("data-sp"); loadList(); });
+  });
+  loadList();
+
+  Promise.all([
+    api("/api/pets?kind=lost&status=reunited"),
+    api("/api/pets?kind=found&status=reunited")
+  ]).then(function(rs){
+    var pets = rs[0].pets.concat(rs[1].pets).sort(function(a,b){ return a.created_at<b.created_at?1:-1; });
+    var el = document.getElementById("reunited-list");
+    if(!pets.length){ el.className="empty"; el.innerHTML="再会の報告をお待ちしています 🐾"; return; }
+    el.className = "grid";
+    el.innerHTML = pets.slice(0,6).map(petCard).join("");
+  }).catch(function(){ var el=document.getElementById("reunited-list"); if(el) el.textContent=""; });
+}
+function petCard(p){
+  var photo = p.photos.length
+    ? '<img src="/uploads/'+esc(p.photos[0])+'" alt="" loading="lazy">'
+    : '<span class="noimg">'+SP_EMOJI[p.species]+'</span>';
+  var title = p.kind==="lost" ? esc(p.name) : "保護中の"+SP_JP[p.species];
+  var tagCls = p.kind==="found" ? "name-tag found-tag" : "name-tag";
+  return '<a class="pet-card fade-in" href="#/pet/'+p.id+'">'+
+    '<span class="badge '+esc(p.status)+' badge-corner">'+STATUS_JP[p.status]+'</span>'+
+    '<span class="sp-chip">'+SP_EMOJI[p.species]+(p.sighting_count?" 👀"+p.sighting_count:"")+'</span>'+
+    (p.source==="city"?'<span style="position:absolute;bottom:10px;right:10px;z-index:5;background:#1E3346;color:#fff;font-size:10px;font-weight:700;border-radius:999px;padding:2px 9px">🏛 愛護センター</span>':'')+
+    '<div class="pet-photo">'+photo+'</div>'+
+    '<div class="pet-body">'+
+      '<span class="'+tagCls+'">'+title+'</span>'+
+      '<div class="pet-meta">'+esc(p.breed||speciesLabel(p))+' / '+esc(p.color||"毛色不明")+(p.collar?' / 首輪あり':'')+'</div>'+
+      '<div class="pet-place">📍 '+esc(p.address||"熊本")+' <time>('+fmtDate(p.event_at)+'頃)</time></div>'+
+    '</div>'+
+  '</a>';
+}
+
+/* ---------- 登録 ---------- */
+function viewRegister(kind){
+  app.innerHTML =
+  '<section class="fade-in">'+
+    '<h2 style="margin-top:22px">'+(kind==="lost"?"いなくなった子の登録":"保護した子の登録")+'</h2>'+
+    '<div class="panel">'+
+      '<div class="msg" id="reg-msg"></div>'+
+      '<label>登録の種類</label>'+
+      '<div class="kind-toggle">'+
+        '<button id="kt-lost">🔍 さがしています<br><span style="font-size:13px;font-weight:400">うちの子がいなくなった</span></button>'+
+        '<button id="kt-found">🏠 保護しています<br><span style="font-size:13px;font-weight:400">迷子の子をみつけた・預かっている</span></button>'+
+      '</div>'+
+      '<div class="step"><span>1</span>どんな子ですか?</div>'+
+      '<label>種類</label>'+
+      '<div class="sp-toggle">'+
+        '<button data-sp="dog">🐕 犬</button><button data-sp="cat">🐈 猫</button><button data-sp="other">🐾 その他</button>'+
+      '</div>'+
+      '<div class="row2">'+
+        '<div id="f-name-wrap"><label id="f-name-label">名前 <span class="opt">必須</span></label><input id="f-name" maxlength="30" placeholder="例:モカ"></div>'+
+        '<div><label>品種 <span class="opt">わかれば</span></label><input id="f-breed" maxlength="30" placeholder="例:柴犬 / キジトラ"></div>'+
+      '</div>'+
+      '<div class="row2">'+
+        '<div id="f-size-wrap"><label>サイズ</label><select id="f-size"><option value="small">小型(〜10kg)</option><option value="medium" selected>中型(10〜25kg)</option><option value="large">大型(25kg〜)</option></select></div>'+
+        '<div><label>毛色</label><input id="f-color" maxlength="30" placeholder="例:茶トラ / 白黒"></div>'+
+      '</div>'+
+      '<label>特徴 <span class="opt">首輪の色・性格・目印など</span></label>'+
+      '<textarea id="f-features" rows="3" maxlength="500" placeholder="例:赤い首輪。人懐こいが大きな音が苦手。しっぽの先が白い。"></textarea>'+
+      '<div class="step"><span>2</span>いつ・どこで?</div>'+
+      '<div class="row2">'+
+        '<div><label id="f-date-label">いなくなった日時 <span class="opt">必須</span></label><input id="f-eventat" type="datetime-local"></div>'+
+        '<div><label id="f-addr-label">場所(住所・目印)</label><input id="f-address" maxlength="100" placeholder="例:中央区水前寺付近"></div>'+
+      '</div>'+
+      '<label>地図で場所を指定 <span class="opt">必須</span></label>'+
+      '<div style="display:flex;gap:8px;align-items:center;margin:2px 0 4px;flex-wrap:wrap">'+
+        '<button type="button" class="btn btn-ghost sm" id="f-gps">📍 現在地を使う</button>'+
+        '<span class="hint">または地図をタップでピン</span>'+
+      '</div>'+
+      '<div id="reg-map" class="map-box"></div>'+
+      '<div class="check-row" id="f-lost-extra">'+
+        '<label><input type="checkbox" id="f-collar"> 首輪あり</label>'+
+        '<label><input type="checkbox" id="f-chip"> マイクロチップあり</label>'+
+      '</div>'+
+      '<div id="f-shelter-wrap" class="hidden">'+
+        '<label>現在の預かり状況 <span class="opt">飼い主さんが確認します</span></label>'+
+        '<input id="f-shelter" maxlength="200" placeholder="例:自宅で保護中 / ◯◯動物病院に預けています / 愛護センターへ届出済み">'+
+      '</div>'+
+      '<div class="step"><span>3</span>写真をのせる</div>'+
+      '<label>写真 <span class="opt">最大3枚。写真があると見つかりやすくなります</span></label>'+
+      '<input type="file" id="f-photos" accept="image/*" multiple>'+
+      '<div class="photo-thumbs" id="thumbs"></div>'+
+      '<div class="step"><span>4</span>連絡先</div>'+
+      '<div class="row2">'+
+        '<div><label id="f-contact-label">連絡先 <span class="opt">電話またはメール</span></label><input id="f-contact" maxlength="100" placeholder="例:090-XXXX-XXXX"></div>'+
+        '<div style="display:flex;align-items:flex-end;padding-bottom:4px"><label style="display:flex;align-items:center;gap:6px;margin:0;font-weight:500"><input type="checkbox" id="f-contact-pub" style="width:auto"> 連絡先をページに公開する</label></div>'+
+      '</div>'+
+      '<p class="hint" id="contact-hint"></p>'+
+      '<div class="honeypot" aria-hidden="true"><input id="f-website" tabindex="-1" autocomplete="off"></div>'+
+      '<div style="margin-top:22px"><button class="btn btn-primary" id="reg-submit" style="width:100%">この内容で登録する(無料)</button></div>'+
+      '<p class="hint" style="margin-top:10px">登録後に表示される「管理用URL」でステータス変更(再会報告など)ができます。</p>'+
+    '</div>'+
+  '</section>';
+
+  var state = {kind:kind, species:"dog"};
+  function refreshKind(){
+    document.getElementById("kt-lost").className = state.kind==="lost"?"on-lost":"";
+    document.getElementById("kt-found").className = state.kind==="found"?"on-found":"";
+    var found = state.kind==="found";
+    document.getElementById("f-name-label").innerHTML = found ? '名前 <span class="opt">不明なら空欄でOK</span>' : '名前 <span class="opt">必須</span>';
+    document.getElementById("f-date-label").textContent = found ? "保護した日時" : "いなくなった日時";
+    document.getElementById("f-addr-label").textContent = found ? "保護した場所(住所・目印)" : "いなくなった場所(住所・目印)";
+    document.getElementById("f-shelter-wrap").classList.toggle("hidden", !found);
+    document.getElementById("f-lost-extra").classList.toggle("hidden", found);
+    document.getElementById("f-contact-label").innerHTML = found ? '連絡先 <span class="opt">必須(飼い主さんが連絡します)</span>' : '連絡先 <span class="opt">電話またはメール</span>';
+    document.getElementById("contact-hint").textContent = found
+      ? "保護情報は飼い主さんからの連絡が命です。公開を強く推奨します。"
+      : "公開しない場合、目撃情報はこのサイトの地図に集まります。公開すると発見者から直接連絡が受けられます。";
+    var btn = document.getElementById("reg-submit");
+    btn.className = found ? "btn btn-found" : "btn btn-primary";
+    btn.style.width = "100%";
+  }
+  function refreshSpecies(){
+    Array.prototype.forEach.call(document.querySelectorAll(".sp-toggle button"), function(b){
+      b.classList.toggle("on", b.getAttribute("data-sp")===state.species);
+    });
+    document.getElementById("f-size-wrap").classList.toggle("hidden", state.species!=="dog");
+  }
+  document.getElementById("kt-lost").addEventListener("click", function(){ state.kind="lost"; refreshKind(); });
+  document.getElementById("kt-found").addEventListener("click", function(){ state.kind="found"; refreshKind(); });
+  Array.prototype.forEach.call(document.querySelectorAll(".sp-toggle button"), function(b){
+    b.addEventListener("click", function(){ state.species=b.getAttribute("data-sp"); refreshSpecies(); });
+  });
+  refreshKind(); refreshSpecies();
+  document.getElementById("f-eventat").value = nowLocal();
+
+  var picked=null, marker=null;
+  var map = L.map("reg-map").setView(KUMAMOTO_CENTER, 12);
+  maps.push(map);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{attribution:"&copy; OpenStreetMap contributors", maxZoom:19}).addTo(map);
+  map.on("click", function(e){
+    picked = e.latlng;
+    if(marker) marker.setLatLng(e.latlng); else marker = L.marker(e.latlng).addTo(map);
+  });
+  document.getElementById("f-gps").addEventListener("click", function(){
+    var b=this;
+    if(!navigator.geolocation){ alert("この端末では位置情報が使えません。地図をタップして指定してください。"); return; }
+    b.disabled=true; b.textContent="📍 取得中…";
+    navigator.geolocation.getCurrentPosition(function(pos){
+      picked={lat:pos.coords.latitude, lng:pos.coords.longitude};
+      if(marker) marker.setLatLng(picked); else marker=L.marker(picked).addTo(map);
+      map.setView([picked.lat,picked.lng],16);
+      b.disabled=false; b.textContent="📍 現在地を使う ✓";
+    },function(){
+      b.disabled=false; b.textContent="📍 現在地を使う";
+      alert("位置情報を取得できませんでした。地図をタップして指定してください。");
+    },{enableHighAccuracy:true, timeout:15000});
+  });
+
+  var photoFiles = [];
+  document.getElementById("f-photos").addEventListener("change", function(ev){
+    photoFiles = Array.prototype.slice.call(ev.target.files, 0, 3);
+    var box = document.getElementById("thumbs"); box.innerHTML = "";
+    photoFiles.forEach(function(f){
+      var img = document.createElement("img"); img.className="thumb";
+      img.src = URL.createObjectURL(f); box.appendChild(img);
+    });
+  });
+
+  document.getElementById("reg-submit").addEventListener("click", function(){
+    var btn=this, msg=document.getElementById("reg-msg");
+    msg.className="msg";
+    var name = document.getElementById("f-name").value.trim();
+    if(state.kind==="lost" && !name){ msg.className="msg err"; msg.textContent="名前を入力してください"; window.scrollTo(0,0); return; }
+    if(!document.getElementById("f-eventat").value){ msg.className="msg err"; msg.textContent="日時を入力してください"; window.scrollTo(0,0); return; }
+    if(!picked){ msg.className="msg err"; msg.textContent="地図をタップして場所を指定してください"; window.scrollTo(0,0); return; }
+    if(state.kind==="found" && !document.getElementById("f-contact").value.trim()){
+      msg.className="msg err"; msg.textContent="保護情報には連絡先が必要です(飼い主さんが連絡できるように)"; window.scrollTo(0,0); return;
+    }
+    btn.disabled=true; btn.textContent="登録中…";
+    var uploaded = [];
+    var chain = Promise.resolve();
+    photoFiles.forEach(function(f){
+      chain = chain.then(function(){ return resizeImage(f); })
+        .then(function(du){ return api("/api/upload",{method:"POST",body:{data:du}}); })
+        .then(function(r){ uploaded.push(r.file); });
+    });
+    chain.then(function(){
+      return api("/api/pets",{method:"POST",body:{
+        kind:state.kind, species:state.species,
+        name:name,
+        breed:document.getElementById("f-breed").value,
+        size:document.getElementById("f-size").value,
+        color:document.getElementById("f-color").value,
+        features:document.getElementById("f-features").value,
+        event_at:document.getElementById("f-eventat").value,
+        lat:picked.lat, lng:picked.lng,
+        address:document.getElementById("f-address").value,
+        collar:document.getElementById("f-collar").checked,
+        microchip:document.getElementById("f-chip").checked,
+        contact:document.getElementById("f-contact").value,
+        contact_public:document.getElementById("f-contact-pub").checked || state.kind==="found",
+        shelter_info:document.getElementById("f-shelter").value,
+        photos:uploaded,
+        website:document.getElementById("f-website").value
+      }});
+    }).then(function(r){
+      location.hash = "#/done/"+r.id+"/"+r.admin_token;
+    }).catch(function(e){
+      msg.className="msg err"; msg.textContent=e.message;
+      btn.disabled=false; btn.textContent="この内容で登録する(無料)"; window.scrollTo(0,0);
+    });
+  });
+}
+
+/* ---------- 登録完了 ---------- */
+function viewDone(id, token){
+  var adminUrl = location.origin + "/#/pet/" + id + "?token=" + token;
+  app.innerHTML =
+  '<div class="done-wrap fade-in">'+
+    '<h1 style="font-size:24px">登録が完了しました</h1>'+
+    '<p style="color:var(--ink-soft);margin-top:8px">下の管理用URLは<b style="color:var(--clay)">この画面にしか表示されません</b>。<br>再会の報告や情報の修正に必要です。必ず保存してください。</p>'+
+    '<div class="token-box">'+esc(adminUrl)+'</div>'+
+    '<button class="btn btn-brass" id="copy-admin">管理用URLをコピー</button>'+
+    '<div style="margin-top:28px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">'+
+      '<a class="btn btn-primary" href="#/flyer/'+id+'">チラシ・SNS文を作る</a>'+
+      '<a class="btn btn-secondary" href="#/pet/'+id+'?token='+encodeURIComponent(token)+'">掲載ページを見る</a>'+
+    '</div>'+
+    '<p class="hint" style="margin-top:20px"><a href="#/info">公的な窓口への連絡</a>もあわせて行ってください。愛護センター・保健所・警察への連絡が再会への近道です。</p>'+
+  '</div>';
+  document.getElementById("copy-admin").addEventListener("click", function(){ copyText(adminUrl, this); });
+}
+
+/* ---------- 詳細 ---------- */
+function viewDetail(id, token){
+  app.innerHTML = '<div class="loading">読み込み中…</div>';
+  api("/api/pets/"+id).then(function(d){
+    var isLost = d.kind === "lost";
+    var photos = d.photos.map(function(p){ return "/uploads/"+p; });
+    var mainPhoto = photos.length
+      ? '<img class="main-photo" src="'+esc(photos[0])+'" alt="">'
+      : '<div class="main-photo" style="display:flex;align-items:center;justify-content:center;background:#DCE0CC;font-size:54px">'+SP_EMOJI[d.species]+'</div>';
+    var subs = photos.length>1
+      ? '<div class="subs">'+photos.slice(1).map(function(p){return '<img src="'+esc(p)+'" alt="">';}).join("")+'</div>' : '';
+    var title = isLost ? esc(d.name) : "保護中の"+SP_JP[d.species]+(d.name?"("+esc(d.name)+"?)":"");
+
+    app.innerHTML =
+    '<section class="fade-in">'+
+      '<div class="detail-head" style="margin-top:20px">'+
+        '<div class="detail-photos">'+mainPhoto+subs+'</div>'+
+        '<div class="detail-info">'+
+          '<span class="badge '+esc(d.status)+'">'+STATUS_JP[d.status]+'</span>'+
+          '<h1 style="font-size:24px;margin:8px 0"><span class="name-tag'+(isLost?"":" found-tag")+'" style="margin:0;font-size:21px;padding:6px 18px 6px 13px">'+title+'</span></h1>'+
+          '<table class="spec">'+
+            '<tr><th>種類</th><td>'+SP_EMOJI[d.species]+' '+esc(d.breed||speciesLabel(d))+'</td></tr>'+
+            '<tr><th>毛色</th><td>'+esc(d.color||"不明")+'</td></tr>'+
+            '<tr><th>特徴</th><td>'+esc(d.features||"—")+'</td></tr>'+
+            '<tr><th>'+(isLost?"いなくなった日時":"保護した日時")+'</th><td>'+fmtDate(d.event_at)+'頃</td></tr>'+
+            '<tr><th>'+(isLost?"いなくなった場所":"保護した場所")+'</th><td>'+esc(d.address||"地図参照")+'</td></tr>'+
+            (isLost?'<tr><th>首輪/チップ</th><td>'+(d.collar?"首輪あり":"首輪なし")+' / '+(d.microchip?"チップあり":"チップ不明")+'</td></tr>':'')+
+            (!isLost && d.shelter_info?'<tr><th>現在の預かり</th><td>'+esc(d.shelter_info)+'</td></tr>':'')+
+            (d.contact?'<tr><th>連絡先</th><td><b>'+esc(d.contact)+'</b></td></tr>':'')+
+          '</table>'+
+          (d.source==="city"?'<div style="background:#EDF2F7;border:1.5px solid #B9C9D8;border-radius:12px;padding:11px 14px;font-size:13px;margin-top:12px">🏛 <b>熊本市動物愛護センターの掲載情報</b>です(地図はおおよその位置)。写真・最新状況は元記事でご確認ください。<div style="margin-top:8px"><a class="btn btn-secondary sm" href="'+esc(d.source_url)+'" target="_blank" rel="noopener">元記事を見る(熊本市サイト)</a></div></div>':'')+
+          '<div class="action-bar no-print">'+
+            (isLost && d.status==="searching"?'<button class="btn btn-primary sm" id="btn-sight">👀 見かけた!を知らせる</button>':'')+
+            '<a class="btn btn-brass sm" href="#/flyer/'+d.id+'">チラシ / SNS文</a>'+
+            '<button class="btn btn-ghost sm" id="btn-flag">通報</button>'+
+          '</div>'+
+        '</div>'+
+      '</div>'+
+      (token ? adminPanelHtml(d, token) : '')+
+      (isLost ? lostSearchHtml(d) : foundMapHtml(d))+
+      similarHtml(d)+
+      '<h2 style="margin-top:26px">飼い主からの更新</h2>'+
+      (token ? '<div class="panel no-print" style="margin-bottom:12px"><div class="msg" id="upd-msg"></div>'+
+        '<label style="margin-top:0">いまの状況を投稿</label>'+
+        '<textarea id="upd-body" rows="2" maxlength="500" placeholder="例:今朝、近所で目撃情報がありました。◯◯方面を捜索中です。"></textarea>'+
+        '<div style="margin-top:10px"><button class="btn btn-secondary sm" id="upd-submit">更新を投稿</button></div></div>' : '')+
+      '<div id="updates-list"></div>'+
+    '</section>';
+
+    // 更新一覧
+    var ul = document.getElementById("updates-list");
+    if(d.updates.length){
+      d.updates.forEach(function(u){
+        var div = document.createElement("div"); div.className="office";
+        var b = document.createElement("b"); b.textContent = fmtDate(u.created_at);
+        var p2 = document.createElement("p"); p2.textContent = u.body;
+        div.appendChild(b); div.appendChild(p2); ul.appendChild(div);
+      });
+    } else ul.innerHTML = '<p class="hint">まだ更新はありません。</p>';
+    var updBtn = document.getElementById("upd-submit");
+    if(updBtn) updBtn.addEventListener("click", function(){
+      var msg=document.getElementById("upd-msg"), body=document.getElementById("upd-body").value.trim();
+      msg.className="msg";
+      if(!body){ msg.className="msg err"; msg.textContent="内容を入力してください"; return; }
+      updBtn.disabled=true;
+      api("/api/pets/"+d.id+"/updates?token="+encodeURIComponent(token),{method:"POST",body:{body:body}})
+        .then(function(){ route(); })
+        .catch(function(e){ msg.className="msg err"; msg.textContent=e.message; updBtn.disabled=false; });
+    });
+
+    // 通報
+    document.getElementById("btn-flag").addEventListener("click", function(){
+      if(!confirm("この掲載を不適切として通報しますか?")) return;
+      api("/api/pets/"+d.id+"/flag",{method:"POST",body:{}}).then(function(r){ alert(r.message||"通報しました"); });
+    });
+
+    // 管理パネル
+    if(token){
+      Array.prototype.forEach.call(document.querySelectorAll("[data-status]"), function(b){
+        b.addEventListener("click", function(){
+          var st = b.getAttribute("data-status");
+          if(!confirm("ステータスを「"+STATUS_JP[st]+"」に変更しますか?")) return;
+          api("/api/pets/"+d.id+"?token="+encodeURIComponent(token),{method:"PATCH",body:{status:st}})
+            .then(function(){ route(); }).catch(function(e){ alert(e.message); });
+        });
+      });
+    }
+
+    if(isLost) initLostMap(d, token);
+    else initFoundMap(d);
+  }).catch(function(e){
+    app.innerHTML = '<div class="empty" style="margin-top:40px">'+esc(e.message)+'</div>';
+  });
+}
+function adminPanelHtml(d, token){
+  var isLost = d.kind==="lost";
+  var buttons = "";
+  if(d.status!=="reunited") buttons += '<button class="btn btn-secondary sm" data-status="reunited">🎉 再会できました!</button>';
+  if(isLost && d.status!=="searching") buttons += '<button class="btn btn-ghost sm" data-status="searching">捜索中に戻す</button>';
+  if(!isLost && d.status!=="sheltering") buttons += '<button class="btn btn-ghost sm" data-status="sheltering">保護中に戻す</button>';
+  if(d.status!=="closed") buttons += '<button class="btn btn-ghost sm" data-status="closed">掲載を終了する</button>';
+  return '<div class="admin-panel no-print"><h3>🔑 掲載者メニュー(このURLを知っている人だけに表示)</h3>'+
+    '<div style="display:flex;gap:8px;flex-wrap:wrap">'+buttons+'</div></div>';
+}
+function similarHtml(d){
+  if(!d.similar || !d.similar.length) return "";
+  var isLost = d.kind==="lost";
+  var title = isLost ? "🏠 似ている保護情報はありませんか?" : "🔍 この子をさがしている掲載はありませんか?";
+  var cls = isLost ? "match-card" : "match-card lostside";
+  return '<section><h2 style="margin-top:26px">'+title+'</h2>'+
+    '<p class="hint" style="margin-bottom:10px">同じ種類('+SP_JP[d.species]+')の最新の'+(isLost?"保護":"捜索")+'情報です。心当たりがあれば確認してください。</p>'+
+    d.similar.map(function(s){
+      var img = s.photos.length ? '<img src="/uploads/'+esc(s.photos[0])+'">' : '<span class="noimg">'+SP_EMOJI[s.species]+'</span>';
+      var name = s.kind==="lost" ? esc(s.name) : "保護中の"+SP_JP[s.species];
+      return '<a class="'+cls+'" href="#/pet/'+s.id+'">'+img+
+        '<div><b>'+name+'</b><p>'+esc(s.color||"")+' / '+esc(s.address||"")+' / '+fmtDate(s.event_at)+'頃</p></div></a>';
+    }).join("")+'</section>';
+}
+function lostSearchHtml(d){
+  var isCat = d.species==="cat";
+  return '<h2 style="margin-top:26px">目撃・捜索マップ</h2>'+
+    '<div class="paint-bar no-print">'+
+      (d.status==="searching"?'<button class="btn btn-ghost" id="btn-paint">🖌 指でぬる</button>'+
+      '<button class="btn btn-ghost" id="btn-walk">🚶 歩くだけで記録</button>'+
+      '<button class="btn btn-brass hidden" id="btn-paint-save">さがした場所を保存(<span id="pending-count">0</span>マス)</button>':'')+
+      '<span class="coverage" id="coverage"></span>'+
+      '<span class="paint-help" id="paint-help">「歩くだけで記録」を押すと、さがしながら歩いた場所が自動で緑にぬられます。手でぬりたいときは「指でぬる」。</span>'+
+    '</div>'+
+    '<div id="detail-map" class="map-box" style="height:400px"></div>'+
+    '<div class="legend">'+
+      '<span><i style="background:#BC3F26"></i>いなくなった場所</span>'+
+      '<span><i style="background:#B8862B"></i>見かけた場所(新しいほど濃い)</span>'+
+      '<span><i class="sq" style="background:#4E8A5A;opacity:.5"></i>さがした場所(時間がたつと薄くなります)</span>'+
+      '<span><i style="background:transparent;border:2px dashed #24422F;border-radius:50%"></i>さがすとよい範囲</span>'+
+    '</div>'+
+    '<div class="radius-note" id="radius-note"></div>'+
+    '<div class="tips-box">'+
+      (isCat ?
+      '<h3>🐈 猫の捜索のコツ</h3><ul>'+
+      '<li>猫の多くは<b>半径50〜200mの物陰に隠れてじっとしています</b>。遠くより、まず家・逸走地点のすぐ近くを徹底的に。</li>'+
+      '<li>床下・車の下・室外機の裏・茂み・側溝を、しゃがんで懐中電灯で確認。</li>'+
+      '<li>人通りの少ない<b>夜間〜明け方</b>に、名前を静かに呼びながら。フードの袋やおやつの音が有効です。</li>'+
+      '<li>使っていた毛布やトイレ砂を玄関先に置くと、匂いで戻ることがあります。</li>'+
+      '<li>見つけても走って近づかない。しゃがんで名前を呼び、おやつで誘導を。</li></ul>'
+      :
+      '<h3>🐕 犬の捜索のコツ</h3><ul>'+
+      '<li>怖がっている犬は飼い主でも逃げることがあります。<b>追いかけず、しゃがんで名前を呼び</b>、おやつで誘導を。</li>'+
+      '<li>散歩コース・公園・水辺など、日頃行き慣れた場所を優先的に。</li>'+
+      '<li>朝夕の涼しい時間帯に動くことが多いです。夏場は日陰・水場もチェック。</li>'+
+      '<li>匂いのついた毛布や飼い主の衣類を逸走地点に置くのも有効です。</li></ul>')+
+    '</div>'+
+    (d.status==="searching"?
+    '<div id="sight-form-wrap" class="hidden">'+
+      '<h2 style="margin-top:26px">見かけた!を知らせる</h2>'+
+      '<div class="panel">'+
+        '<div class="msg" id="sight-msg"></div>'+
+        '<label>どこで見かけましたか? <span class="opt">必須</span></label>'+
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:4px">'+
+          '<button class="btn btn-secondary sm" id="s-gps">📍 いまいる場所で知らせる</button>'+
+          '<span class="hint">または上の地図をタップ</span>'+
+        '</div>'+
+        '<p class="hint" id="sight-pos">未指定</p>'+
+        '<div class="row2">'+
+          '<div><label>いつ見かけましたか? <span class="opt">必須</span></label><input type="datetime-local" id="s-seenat"></div>'+
+          '<div><label>連絡先 <span class="opt">任意</span></label><input id="s-contact" maxlength="100"></div>'+
+        '</div>'+
+        '<label>状況 <span class="opt">任意</span></label>'+
+        '<textarea id="s-memo" rows="2" maxlength="300" placeholder="例:駐車場の車の下に隠れていた。呼んだら奥へ逃げた。"></textarea>'+
+        '<div class="honeypot" aria-hidden="true"><input id="s-website" tabindex="-1" autocomplete="off"></div>'+
+        '<div style="margin-top:14px"><button class="btn btn-primary" id="sight-submit" style="width:100%">見かけた!を送る</button></div>'+
+      '</div>'+
+    '</div>':'')+
+    '<h2 style="margin-top:26px">みんなの「見かけた!」('+d.sightings.length+'件)</h2>'+
+    '<div id="timeline">'+(d.sightings.length?"":'<div class="empty">まだ「見かけた!」はありません。SNSやチラシで広めて、情報を集めましょう。</div>')+'</div>'+
+    (d.status==="searching"?
+    '<div class="bottom-bar no-print">'+
+      '<button class="btn btn-primary" id="bb-sight">👀 見かけた!</button>'+
+      '<button class="btn btn-ghost" id="bb-walk">🚶 歩くだけで記録</button>'+
+    '</div>':'');
+}
+function foundMapHtml(d){
+  return '<h2 style="margin-top:26px">保護した場所</h2>'+
+    '<div id="detail-map" class="map-box" style="height:320px"></div>'+
+    '<p class="hint" style="margin-top:8px">迷子の子は保護場所の近くに住んでいた可能性があります。ご近所での聞き込みも有効です。</p>';
+}
+function initLostMap(d, token){
+  var center = [d.lat, d.lng];
+  var map = L.map("detail-map").setView(center, d.species==="cat"?16:14);
+  maps.push(map);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{attribution:"&copy; OpenStreetMap contributors", maxZoom:19}).addTo(map);
+  var cellsLayer = L.layerGroup().addTo(map);
+  function cellKey(latlng){ return Math.floor(latlng.lat/GRID_LAT)+"_"+Math.floor(latlng.lng/GRID_LNG); }
+  function cellBounds(key){
+    var q=key.split("_"), la=parseInt(q[0],10)*GRID_LAT, ln=parseInt(q[1],10)*GRID_LNG;
+    return [[la,ln],[la+GRID_LAT,ln+GRID_LNG]];
+  }
+  function cellOpacity(at){
+    var h=hoursSince(at);
+    return h<24?0.45:h<48?0.28:0.13;
+  }
+  var drawn={}, pending={};
+  d.searched.forEach(function(c){
+    drawn[c.cell]=L.rectangle(cellBounds(c.cell),{color:"#4E8A5A",weight:0,fillColor:"#4E8A5A",fillOpacity:cellOpacity(c.searched_at),interactive:false}).addTo(cellsLayer);
+  });
+  function updateCoverage(){
+    var n=Object.keys(drawn).length+Object.keys(pending).length;
+    document.getElementById("coverage").textContent = n?"さがした場所 "+n+"マス(約"+(n*0.023).toFixed(1)+"km²)":"まだ誰もさがしていません。最初の1人になってください";
+  }
+  updateCoverage();
+
+  L.circleMarker(center,{radius:10,color:"#fff",weight:3,fillColor:"#BC3F26",fillOpacity:1}).addTo(map)
+    .bindTooltip("いなくなった場所 "+fmtDate(d.event_at),{className:"pin-label",direction:"top",offset:[0,-10],permanent:true});
+  d.sightings.forEach(function(s,i){
+    var op = 0.35 + 0.65*(i+1)/d.sightings.length;
+    L.circleMarker([s.lat,s.lng],{radius:7,color:"#fff",weight:2.5,fillColor:"#B8862B",fillOpacity:op}).addTo(map)
+      .bindPopup(fmtDate(s.seen_at)+"頃に目撃<br>"+esc(s.memo||""));
+  });
+  if(d.status==="searching"){
+    var last = d.sightings.length?d.sightings[d.sightings.length-1]:null;
+    var rc = last?[last.lat,last.lng]:center;
+    var from = last?last.seen_at:d.event_at;
+    var km = searchRadiusKm(d.species, d.size, hoursSince(from));
+    L.circle(rc,{radius:km*1000,color:"#24422F",dashArray:"6 6",weight:2,fillColor:"#24422F",fillOpacity:.06,interactive:false}).addTo(map);
+    var note = document.getElementById("radius-note");
+    note.innerHTML = "💡 点線の円の中を<b>重点的にさがしてください(半径 約"+(km<1?Math.round(km*1000)+"m":km.toFixed(1)+"km")+")</b>。"+
+      (d.species==="cat"
+        ? "猫は遠くへ行かず、<b>近くの物陰に隠れてじっとしている</b>ことがほとんどです。円の内側を集中的に、繰り返し確認してください。"
+        : "最新の目撃があるとその地点中心に更新されます。")
+  }
+  var tl = document.getElementById("timeline");
+  d.sightings.slice().reverse().forEach(function(s){
+    var div=document.createElement("div"); div.className="office";
+    var b=document.createElement("b"); b.textContent=fmtDate(s.seen_at)+"頃に目撃";
+    var p2=document.createElement("p"); p2.textContent=s.memo||"(状況メモなし)";
+    div.appendChild(b); div.appendChild(p2); tl.appendChild(div);
+  });
+
+  if(d.status!=="searching") return;
+
+  // 塗りつぶし(共通ロジック: 手動なぞり / GPS歩行記録)
+  var mapEl=document.getElementById("detail-map");
+  var painting=false, down=false;
+  function paintCell(latlng){
+    var key=cellKey(latlng);
+    if(pending[key]) return;
+    if(drawn[key]){ cellsLayer.removeLayer(drawn[key]); delete drawn[key]; }
+    pending[key]=L.rectangle(cellBounds(key),{color:"#2E6B3C",weight:1,fillColor:"#4E8A5A",fillOpacity:.55,interactive:false}).addTo(cellsLayer);
+    document.getElementById("pending-count").textContent=Object.keys(pending).length;
+    document.getElementById("btn-paint-save").classList.remove("hidden");
+    updateCoverage();
+  }
+  function paintFromEvent(e){
+    var r=mapEl.getBoundingClientRect();
+    paintCell(map.containerPointToLatLng(L.point(e.clientX-r.left,e.clientY-r.top)));
+  }
+  mapEl.addEventListener("pointerdown",function(e){
+    if(!painting) return; down=true; e.preventDefault();
+    mapEl.setPointerCapture&&mapEl.setPointerCapture(e.pointerId); paintFromEvent(e);
+  });
+  mapEl.addEventListener("pointermove",function(e){ if(!painting||!down)return; e.preventDefault(); paintFromEvent(e); });
+  window.addEventListener("pointerup",function(){ down=false; });
+  var paintBtn=document.getElementById("btn-paint");
+  var saveBtn=document.getElementById("btn-paint-save");
+  paintBtn.addEventListener("click",function(){
+    painting=!painting;
+    paintBtn.classList.toggle("active",painting);
+    paintBtn.textContent=painting?"✅ 指でぬる(ON)":"🖌 指でぬる";
+    mapEl.classList.toggle("painting",painting);
+    document.getElementById("paint-help").textContent=painting
+      ?"実際に捜索した範囲を指でなぞってください。地図を動かす時はOFFに。塗り終えたら「保存」。"
+      :"「歩くだけで記録」を押すと、さがしながら歩いた場所が自動で緑にぬられます。手でぬりたいときは「指でぬる」。";
+    if(painting){ map.dragging.disable(); mapEl.style.touchAction="none"; }
+    else{ map.dragging.enable(); mapEl.style.touchAction=""; }
+  });
+  // GPS歩行記録: 歩くだけで現在地のマスを自動で塗る
+  var walkBtn=document.getElementById("btn-walk");
+  var walkId=null, walkMarker=null;
+  function stopWalk(){
+    if(walkId!==null){ navigator.geolocation.clearWatch(walkId); walkId=null; }
+    if(walkMarker){ map.removeLayer(walkMarker); walkMarker=null; }
+    walkBtn.classList.remove("active");
+    walkBtn.textContent="🚶 歩くだけで記録";
+  }
+  walkBtn.addEventListener("click",function(){
+    if(walkId!==null){
+      stopWalk();
+      document.getElementById("paint-help").textContent="記録を止めました。「保存」を押すとみんなに共有されます。";
+      return;
+    }
+    if(!navigator.geolocation){ alert("この端末では位置情報が使えません。「なぞって塗る」をご利用ください。"); return; }
+    walkBtn.textContent="⏸ 記録中(タップで停止)";
+    walkBtn.classList.add("active");
+    document.getElementById("paint-help").textContent="いまGPSで記録中です。さがしながら歩くと、通った場所が自動で緑になります。";
+    walkId=navigator.geolocation.watchPosition(function(pos){
+      if(pos.coords.accuracy>150) return;  // 精度が悪すぎる位置は無視
+      var ll={lat:pos.coords.latitude, lng:pos.coords.longitude};
+      paintCell(ll);
+      if(!walkMarker){
+        walkMarker=L.circleMarker([ll.lat,ll.lng],{radius:8,color:"#fff",weight:2.5,fillColor:"#2E6B3C",fillOpacity:1}).addTo(map).bindTooltip("あなたの現在地",{className:"pin-label",direction:"top",offset:[0,-8]});
+        map.setView([ll.lat,ll.lng], Math.max(map.getZoom(),16));
+      } else walkMarker.setLatLng([ll.lat,ll.lng]);
+    },function(err){
+      alert("位置情報を取得できませんでした("+err.message+")。端末の位置情報許可を確認してください。");
+      stopWalk();
+    },{enableHighAccuracy:true, maximumAge:5000, timeout:15000});
+  });
+  saveBtn.addEventListener("click",function(){
+    stopWalk();
+    var keys=Object.keys(pending);
+    if(!keys.length){ alert("塗りつぶした範囲がありません"); return; }
+    saveBtn.disabled=true;
+    api("/api/pets/"+d.id+"/searched",{method:"POST",body:{cells:keys}}).then(function(r){
+      alert("捜索記録を保存しました("+r.saved+"マス)。ご協力ありがとうございます!");
+      route();
+    }).catch(function(e){ alert(e.message); saveBtn.disabled=false; });
+  });
+
+  // 目撃投稿
+  var sightPos=null, sightMarker=null;
+  function setSightPos(latlng, label){
+    sightPos=latlng;
+    if(sightMarker) sightMarker.setLatLng(latlng);
+    else sightMarker=L.marker(latlng).addTo(map);
+    map.setView([latlng.lat,latlng.lng], Math.max(map.getZoom(),16));
+    document.getElementById("sight-pos").textContent=label;
+  }
+  var gpsBtn=document.getElementById("s-gps");
+  if(gpsBtn) gpsBtn.addEventListener("click",function(){
+    if(!navigator.geolocation){ alert("この端末では位置情報が使えません。地図をタップして指定してください。"); return; }
+    gpsBtn.disabled=true; gpsBtn.textContent="📍 取得中…";
+    navigator.geolocation.getCurrentPosition(function(pos){
+      var acc=Math.round(pos.coords.accuracy);
+      setSightPos({lat:pos.coords.latitude,lng:pos.coords.longitude},
+        "現在地を取得しました(精度±"+acc+"m)。ずれていれば地図をタップして修正できます。");
+      gpsBtn.disabled=false; gpsBtn.textContent="📍 いまいる場所で知らせる";
+      if(acc>100) alert("位置の精度が低めです(±"+acc+"m)。屋外で再取得するか、地図をタップして正確な位置に修正してください。");
+    },function(err){
+      gpsBtn.disabled=false; gpsBtn.textContent="📍 いまいる場所で知らせる";
+      alert("位置情報を取得できませんでした。端末の位置情報許可を確認するか、地図をタップして指定してください。");
+    },{enableHighAccuracy:true, timeout:15000, maximumAge:30000});
+  });
+  var sightBtn=document.getElementById("btn-sight");
+  function openSightForm(){
+    document.getElementById("sight-form-wrap").classList.remove("hidden");
+    document.getElementById("s-seenat").value=nowLocal();
+    document.getElementById("sight-form-wrap").scrollIntoView({behavior:"smooth"});
+  }
+  if(sightBtn) sightBtn.addEventListener("click",openSightForm);
+  // スマホ用固定バー: 既存ボタンへのプロキシ
+  var bbSight=document.getElementById("bb-sight");
+  var bbWalk=document.getElementById("bb-walk");
+  function syncBB(){ if(bbWalk) bbWalk.textContent=walkBtn.textContent; }
+  if(bbSight) bbSight.addEventListener("click",function(){
+    openSightForm();
+    var g=document.getElementById("s-gps");
+    if(g) g.click();  // ワンタップで現在地取得まで進める
+  });
+  if(bbWalk) bbWalk.addEventListener("click",function(){ walkBtn.click(); setTimeout(syncBB,50); });
+  var _origStopWalk=stopWalk;
+  stopWalk=function(){ _origStopWalk(); syncBB(); };
+  map.on("click",function(e){
+    if(painting) return;
+    if(document.getElementById("sight-form-wrap").classList.contains("hidden")) return;
+    setSightPos(e.latlng, "指定済み: "+e.latlng.lat.toFixed(5)+", "+e.latlng.lng.toFixed(5));
+  });
+  document.getElementById("sight-submit").addEventListener("click",function(){
+    var btn=this, msg=document.getElementById("sight-msg");
+    msg.className="msg";
+    if(!sightPos){ msg.className="msg err"; msg.textContent="地図をタップして目撃場所を指定してください"; return; }
+    if(!document.getElementById("s-seenat").value){ msg.className="msg err"; msg.textContent="目撃した日時を入力してください"; return; }
+    btn.disabled=true;
+    api("/api/pets/"+d.id+"/sightings",{method:"POST",body:{
+      lat:sightPos.lat, lng:sightPos.lng,
+      seen_at:document.getElementById("s-seenat").value,
+      memo:document.getElementById("s-memo").value,
+      contact:document.getElementById("s-contact").value,
+      website:document.getElementById("s-website").value
+    }}).then(function(){
+      msg.className="msg ok"; msg.textContent="ありがとうございます。目撃情報を投稿しました。";
+      setTimeout(route, 1200);
+    }).catch(function(e){ msg.className="msg err"; msg.textContent=e.message; btn.disabled=false; });
+  });
+}
+function initFoundMap(d){
+  var map = L.map("detail-map").setView([d.lat,d.lng], 15);
+  maps.push(map);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{attribution:"&copy; OpenStreetMap contributors", maxZoom:19}).addTo(map);
+  L.circleMarker([d.lat,d.lng],{radius:10,color:"#fff",weight:3,fillColor:"#3E6B8F",fillOpacity:1}).addTo(map)
+    .bindTooltip("保護した場所 "+fmtDate(d.event_at),{className:"pin-label",direction:"top",offset:[0,-10],permanent:true});
+}
+
+/* ---------- チラシ ---------- */
+function viewFlyer(id){
+  app.innerHTML = '<div class="loading">読み込み中…</div>';
+  api("/api/pets/"+id).then(function(d){
+    var isLost = d.kind==="lost";
+    var pageUrl = location.origin + "/#/pet/" + d.id;
+    var qr = "https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=" + encodeURIComponent(pageUrl);
+    var photo = d.photos.length ? '<img class="flyer-photo" src="/uploads/'+esc(d.photos[0])+'" alt="">' : '';
+    app.innerHTML =
+    '<section class="fade-in">'+
+      '<div class="no-print" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:18px">'+
+        '<a class="btn btn-ghost sm" href="#/pet/'+d.id+'">← 掲載ページへ戻る</a>'+
+        '<button class="btn btn-brass sm" id="btn-gen">✨ AIで文面を生成</button>'+
+        '<button class="btn btn-primary sm" onclick="window.print()">🖨 チラシを印刷 / PDF保存</button>'+
+      '</div>'+
+      '<div class="msg no-print" id="gen-msg"></div>'+
+      '<div id="flyer-sheet">'+
+        '<div class="flyer-catch'+(isLost?"":" found")+'" id="fl-catch">'+(isLost?"さがしています":"保護しています")+'</div>'+
+        '<div class="flyer-sub">'+(isLost?"この子を見かけませんでしたか?":"この子の飼い主さんをさがしています")+'(熊本)</div>'+
+        photo+
+        '<table class="flyer-spec">'+
+          (isLost?'<tr><th>名前</th><td>'+esc(d.name)+'</td></tr>':'')+
+          '<tr><th>種類</th><td>'+esc(d.breed||speciesLabel(d))+'</td></tr>'+
+          '<tr><th>毛色/特徴</th><td>'+esc(d.color||"")+' '+esc(d.features||"")+'</td></tr>'+
+          '<tr><th>'+(isLost?"いなくなった日時":"保護した日時")+'</th><td>'+fmtDate(d.event_at)+'頃</td></tr>'+
+          '<tr><th>場所</th><td>'+esc(d.address||"熊本")+'</td></tr>'+
+          (!isLost&&d.shelter_info?'<tr><th>現在</th><td>'+esc(d.shelter_info)+'</td></tr>':'')+
+        '</table>'+
+        '<div class="flyer-note" id="fl-note">'+
+          (isLost
+            ?(d.species==="cat"?"驚かせると逃げてしまいます。そっと距離を保ち、目撃情報をお寄せください。":"見かけても追いかけないでください。逃げてしまいます。その場から目撃情報をお寄せください。")
+            :"心当たりのある飼い主さんは、下記までご連絡ください。")+'</div>'+
+        '<div class="flyer-foot">'+
+          '<div class="flyer-contact">'+
+            (d.contact?'<div>連絡先:<b>'+esc(d.contact)+'</b></div>':'')+
+            '<div style="font-size:12px;color:#555;margin-top:4px">QRコードから'+(isLost?"目撃場所を地図で投稿できます":"掲載ページを確認できます")+' →</div>'+
+          '</div>'+
+          '<img class="flyer-qr" src="'+qr+'" alt="QR">'+
+        '</div>'+
+      '</div>'+
+      '<section class="no-print">'+
+        '<h2>SNS投稿文</h2>'+
+        '<p class="hint">「AIで文面を生成」を押すと、この子の情報に合わせた文面になります。</p>'+
+        '<h3 style="font-size:14px;margin-top:14px">X(旧Twitter)用</h3>'+
+        '<div class="gen-box" id="gen-x">読み込み中…</div>'+
+        '<h3 style="font-size:14px;margin-top:14px">Instagram / Facebook用</h3>'+
+        '<div class="gen-box" id="gen-long">読み込み中…</div>'+
+      '</section>'+
+    '</section>';
+
+    function setGenBox(id, text){
+      var box=document.getElementById(id);
+      box.textContent=text;
+      var b=document.createElement("button"); b.className="copy-btn"; b.textContent="コピー";
+      b.addEventListener("click",function(){ copyText(text,b); });
+      box.appendChild(b);
+    }
+    function applyTexts(r){
+      setGenBox("gen-x", r.x+"\n"+pageUrl);
+      setGenBox("gen-long", r.long+"\n\n"+(isLost?"目撃情報はこちらから → ":"掲載ページ → ")+pageUrl);
+      if(r.flyer_catch) document.getElementById("fl-catch").textContent=r.flyer_catch;
+      if(r.flyer_note) document.getElementById("fl-note").textContent=r.flyer_note;
+    }
+    api("/api/generate",{method:"POST",body:{pet_id:d.id}}).then(applyTexts).catch(function(){});
+    document.getElementById("btn-gen").addEventListener("click",function(){
+      var btn=this, msg=document.getElementById("gen-msg");
+      btn.disabled=true; btn.textContent="生成中…"; msg.className="msg";
+      api("/api/generate",{method:"POST",body:{pet_id:d.id}}).then(function(r){
+        applyTexts(r);
+        msg.className="msg ok";
+        msg.textContent = r.source==="claude"?"AIが文面を生成しました。":"文面を更新しました(AI未接続のため定型文)。";
+        btn.disabled=false; btn.textContent="✨ AIで文面を生成";
+      }).catch(function(e){ msg.className="msg err"; msg.textContent=e.message; btn.disabled=false; btn.textContent="✨ AIで文面を生成"; });
+    });
+  }).catch(function(e){ app.innerHTML='<div class="empty" style="margin-top:40px">'+esc(e.message)+'</div>'; });
+}
+
+/* ---------- 窓口・注意 ---------- */
+var CHECKLIST = [
+  "熊本市動物愛護センター(市内)/ 管轄の保健所(市外)に連絡し、保護・収容されていないか確認",
+  "最寄りの警察署・交番に遺失物届(保護した方が届けている場合があります)",
+  "近隣の動物病院・避難所に問い合わせ",
+  "このサイトに登録し、チラシとSNS投稿文で拡散",
+  "逸走地点の近くを重点捜索(猫は物陰・犬は行き慣れた場所)",
+  "匂いのついた毛布・トイレ砂・衣類を逸走地点や玄関先に置く",
+  "愛護センターの収容情報ページを毎日確認(収容期限があります)",
+  "数日おきにセンター・保健所へ継続確認"
+];
+function viewInfo(){
+  var saved = {};
+  try{ saved = JSON.parse(localStorage.getItem("kpm-checklist")||"{}"); }catch(e){}
+  app.innerHTML =
+  '<section class="fade-in">'+
+    '<div class="warn-box"><b>⚠ 余震・被災地での捜索は安全第一で。</b> 倒壊のおそれがある建物・ブロック塀・崖の近くには立ち入らないでください。夜間の捜索は2人以上で、ライトを持って。ご自身の避難と安全が最優先です。</div>'+
+    '<h2>まずやることリスト</h2>'+
+    '<p class="hint" style="margin-bottom:12px">チェックは端末に保存されます。</p>'+
+    '<ul class="checklist" id="cklist">'+
+      CHECKLIST.map(function(t,i){
+        return '<li class="'+(saved[i]?"done":"")+'"><input type="checkbox" data-i="'+i+'" '+(saved[i]?"checked":"")+'><span>'+esc(t)+'</span></li>';
+      }).join("")+
+    '</ul>'+
+  '</section>'+
+  '<section>'+
+    '<h2>公的な窓口(必ず連絡を)</h2>'+
+    '<div class="office"><b>熊本市動物愛護センター</b>(熊本市内で迷子・保護した場合)'+
+      '<p class="tel">096-380-2153</p>'+
+      '<p>迷子・保護動物の収容先。収容された動物の情報が公開されています。受付時間・最新情報は公式サイトでご確認ください。</p>'+
+      '<p><a href="https://www.city.kumamoto.jp/" target="_blank" rel="noopener">熊本市 公式サイト →</a></p></div>'+
+    '<div class="office"><b>熊本県の各保健所</b>(熊本市外の場合)'+
+      '<p>迷子になった場所を管轄する保健所へ。隣接地域の保健所にも連絡を。県の動物愛護ホームページに収容動物の情報と、飼い主が迷子情報を登録できるページがあります。</p>'+
+      '<p><a href="https://www.pref.kumamoto.jp/soshiki/30/51373.html" target="_blank" rel="noopener">熊本県「ペットが迷子になってしまったら」→</a></p></div>'+
+    '<div class="office"><b>警察署(遺失物届)</b>'+
+      '<p>保護した方が拾得物として届けている場合があります。最寄りの警察署・交番へ。</p>'+
+      '<p><a href="https://www.police.pref.kumamoto.jp/" target="_blank" rel="noopener">熊本県警察 →</a></p></div>'+
+    '<div class="office"><b>マイクロチップ情報(環境省)</b>'+
+      '<p>チップ装着済みなら、登録情報(連絡先・住所)が最新か確認を。避難先にいる場合は特に重要です。</p>'+
+      '<p><a href="https://reg.mc.env.go.jp/" target="_blank" rel="noopener">犬と猫のマイクロチップ情報登録 →</a></p></div>'+
+  '</section>'+
+  '<section>'+
+    '<h2>避難生活とペット</h2>'+
+    '<div class="office"><b>🚗 車中泊・停電時の熱中症に注意</b><p>真夏の車内は短時間で危険な温度になります。換気・日陰・水を確保し、犬の激しいパンティング・大量のよだれ、猫の開口呼吸は危険なサインです。異変があればすぐ動物病院へ。</p></div>'+
+    '<div class="office"><b>🏠 同伴避難</b><p>避難所ごとにペットの受け入れ方針が異なります。自治体の発表や避難所の掲示を確認し、ケージ・リード・数日分のフードを準備してください。</p></div>'+
+    '<p class="hint">※各機関の連絡先・受付時間は変更される場合があります。必ず公式サイトで最新情報をご確認ください。</p>'+
+  '</section>';
+  document.getElementById("cklist").addEventListener("change", function(e){
+    if(e.target.type!=="checkbox") return;
+    var st={}; try{ st=JSON.parse(localStorage.getItem("kpm-checklist")||"{}"); }catch(err){}
+    st[e.target.getAttribute("data-i")]=e.target.checked;
+    localStorage.setItem("kpm-checklist", JSON.stringify(st));
+    e.target.closest("li").classList.toggle("done", e.target.checked);
+  });
+}
+
+/* ---------- 管理画面(運営用・ADMIN_KEY必須) ---------- */
+function viewAdmin(){
+  var key = sessionStorage.getItem("kpm-admin-key") || "";
+  function renderLogin(errMsg){
+    app.innerHTML =
+    '<div class="fade-in" style="max-width:420px;margin:44px auto">'+
+      '<div class="panel"><h2 style="font-size:16px">運営管理</h2>'+
+      (errMsg?'<div class="msg err">'+esc(errMsg)+'</div>':'')+
+      '<label>管理キー</label><input id="ad-key" type="password">'+
+      '<div style="margin-top:14px"><button class="btn btn-secondary" id="ad-login" style="width:100%">開く</button></div></div>'+
+    '</div>';
+    document.getElementById("ad-login").addEventListener("click", function(){
+      sessionStorage.setItem("kpm-admin-key", document.getElementById("ad-key").value);
+      viewAdmin();
+    });
+  }
+  if(!key) return renderLogin();
+  app.innerHTML = '<div class="loading">読み込み中…</div>';
+  api("/api/admin/list?key="+encodeURIComponent(key)).then(function(d){
+    function row(item, table){
+      var label = table==="pets"
+        ? SP_EMOJI[item.species]+" "+(item.name||"(名前なし)")+" / "+(item.color||"")+" / "+(item.address||"")+" / "+STATUS_JP[item.status]
+        : "目撃 "+fmtDate(item.seen_at)+" / "+(item.memo||"");
+      return '<div class="office"><b>'+(item.hidden?"🚫 非表示中":"⚠ 通報 "+item.flags+"件")+'</b>'+
+        '<p>'+esc(label)+'</p>'+
+        '<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">'+
+          (table==="pets"?'<a class="btn btn-ghost sm" href="#/pet/'+item.id+'">確認</a>':'')+
+          '<button class="btn btn-secondary sm" data-t="'+table+'" data-id="'+item.id+'" data-a="restore">復帰(通報リセット)</button>'+
+          (!item.hidden?'<button class="btn btn-ghost sm" data-t="'+table+'" data-id="'+item.id+'" data-a="hide">非表示にする</button>':'')+
+        '</div></div>';
+    }
+    app.innerHTML =
+    '<section class="fade-in"><h2 style="margin-top:22px">運営管理 — 通報・非表示の対応</h2>'+
+      '<p class="hint" style="margin-bottom:14px">通報が3件たまると自動で非表示になります。内容を確認し、問題なければ「復帰」を。</p>'+
+      '<h3 style="font-family:var(--fd);font-size:15px;margin:14px 0 8px">掲載('+d.pets.length+'件)</h3>'+
+      (d.pets.length?d.pets.map(function(p){return row(p,"pets");}).join(""):'<div class="empty">対応が必要な掲載はありません</div>')+
+      '<h3 style="font-family:var(--fd);font-size:15px;margin:18px 0 8px">目撃情報('+d.sightings.length+'件)</h3>'+
+      (d.sightings.length?d.sightings.map(function(s){return row(s,"sightings");}).join(""):'<div class="empty">対応が必要な目撃情報はありません</div>')+
+    '</section>';
+    Array.prototype.forEach.call(document.querySelectorAll("[data-a]"), function(b){
+      b.addEventListener("click", function(){
+        api("/api/admin/moderate",{method:"POST",body:{
+          key:key, table:b.getAttribute("data-t"), id:b.getAttribute("data-id"), action:b.getAttribute("data-a")
+        }}).then(function(){ viewAdmin(); }).catch(function(e){ alert(e.message); });
+      });
+    });
+  }).catch(function(e){
+    sessionStorage.removeItem("kpm-admin-key");
+    renderLogin(e.message);
+  });
+}
+
+
+/* ---------- 利用規約・プライバシーポリシー ---------- */
+function viewTerms(){
+  app.innerHTML =
+  '<section class="fade-in" style="max-width:720px">'+
+    '<h1 style="font-size:22px;margin-top:24px">利用規約・プライバシーポリシー</h1>'+
+    '<p class="hint">最終更新: 2026年7月31日</p>'+
+    '<div class="panel" style="margin-top:14px;font-size:14px;line-height:2">'+
+      '<h2 style="font-size:16px">このサイトについて</h2>'+
+      '<p>「くまもとペット捜索マップ」(以下「本サイト」)は、令和8年熊本地震で迷子になったペットと飼い主さんの再会を支援するため、合同会社CRK(熊本市)が<b>完全無料・非営利</b>で運営するサービスです。</p>'+
+      '<h2 style="font-size:16px;margin-top:20px">投稿について</h2>'+
+      '<p>・投稿された情報(ペットの情報、日時、場所、写真、任意で公開設定した連絡先)は、<b>誰でも閲覧できる形で公開されます</b>。<br>'+
+      '・連絡先の公開は任意です。公開しない場合、連絡先は表示されません。<br>'+
+      '・虚偽の投稿、他人へのいやがらせ、ペット捜索と無関係な投稿は禁止です。通報が一定数に達した投稿は自動的に非表示となり、運営が確認します。<br>'+
+      '・投稿の削除を希望する場合は、登録時の管理用URLから「掲載を終了する」を押すか、下記の運営連絡先までご連絡ください。</p>'+
+      '<h2 style="font-size:16px;margin-top:20px">個人情報の取り扱い</h2>'+
+      '<p>・取得する情報は、投稿内容と、スパム対策のための通信情報(ハッシュ化して保存)のみです。<br>'+
+      '・取得した情報はペット捜索の目的にのみ利用し、第三者への提供・広告利用は行いません。<br>'+
+      '・位置情報(GPS)は目撃報告・捜索記録のために端末上で取得され、ご本人の操作なしに送信されることはありません。<br>'+
+      '・削除依頼には速やかに対応します。</p>'+
+      '<h2 style="font-size:16px;margin-top:20px">免責事項</h2>'+
+      '<p>・掲載情報は投稿者および熊本市動物愛護センターの公開情報に基づくもので、内容の正確性を保証するものではありません。<br>'+
+      '・捜索の際はご自身の安全を最優先してください。余震・倒壊のおそれのある場所には立ち入らないでください。<br>'+
+      '・本サイトの利用により生じた損害について、運営は責任を負いかねます。</p>'+
+      '<h2 style="font-size:16px;margin-top:20px">運営者</h2>'+
+      '<p>合同会社CRK(熊本市中央区新市街13-13 FUTAビル4階)<br>お問い合わせ: crk.jp のお問い合わせフォームより</p>'+
+    '</div>'+
+  '</section>';
+}
+
+route();
+</script>
+</body>
+</html>

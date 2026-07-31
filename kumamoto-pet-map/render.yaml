@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: kumamoto-pet-map
+    runtime: python
+    plan: starter          # 無料枠はスリープ+データ消失のため災害用途では不可
+    buildCommand: ""
+    startCommand: python server.py
+    disk:
+      name: petmap-data
+      mountPath: /opt/render/project/src/data
+      sizeGB: 1
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false        # ダッシュボードで設定
+      - key: ADMIN_KEY
+        sync: false        # 運営管理画面(/#/admin)用の任意の長い文字列
+      - key: CITY_SYNC
+        value: "0"         # 愛護センター自動取込。dry-run確認後に "1" へ
