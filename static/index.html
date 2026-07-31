@@ -505,10 +505,15 @@ function foundContactHtml(d){
   '</div>';
 }
 
+function extPhotoOk(p){
+  return p.photo_ext && p.photo_ext.indexOf("https://www.city.kumamoto.jp/")===0;
+}
 function petCard(p){
   var photo = p.photos.length
     ? '<img src="/uploads/'+esc(p.photos[0])+'" alt="" loading="lazy">'
-    : '<span class="noimg">'+SP_EMOJI[p.species]+'</span>';
+    : (extPhotoOk(p)
+      ? '<img src="'+esc(p.photo_ext)+'" alt="" loading="lazy">'
+      : '<span class="noimg">'+SP_EMOJI[p.species]+'</span>');
   var title = p.kind==="lost" ? esc(p.name) : "保護中の"+SP_JP[p.species];
   var tagCls = p.kind==="found" ? "name-tag found-tag" : "name-tag";
   return '<a class="pet-card fade-in" href="#/pet/'+p.id+'">'+
@@ -724,7 +729,10 @@ function viewDetail(id, token){
     var photos = d.photos.map(function(p){ return "/uploads/"+p; });
     var mainPhoto = photos.length
       ? '<img class="main-photo" src="'+esc(photos[0])+'" alt="">'
-      : '<div class="main-photo" style="display:flex;align-items:center;justify-content:center;background:#DCE0CC;font-size:54px">'+SP_EMOJI[d.species]+'</div>';
+      : (extPhotoOk(d)
+        ? '<img class="main-photo" src="'+esc(d.photo_ext)+'" alt="">'+
+          '<p class="hint" style="text-align:center;margin-top:4px">写真: 熊本市動物愛護センター(元記事より)</p>'
+        : '<div class="main-photo" style="display:flex;align-items:center;justify-content:center;background:#DCE0CC;font-size:54px">'+SP_EMOJI[d.species]+'</div>');
     var subs = photos.length>1
       ? '<div class="subs">'+photos.slice(1).map(function(p){return '<img src="'+esc(p)+'" alt="">';}).join("")+'</div>' : '';
     var title = isLost ? esc(d.name) : "保護中の"+SP_JP[d.species]+(d.name?"("+esc(d.name)+"?)":"");
