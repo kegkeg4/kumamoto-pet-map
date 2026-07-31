@@ -160,11 +160,16 @@ def sync(dry_run=False, with_photos=False):
         time.sleep(FETCH_INTERVAL)
         items = parse_list(html)
         print(f"[list] {list_url} ({kind}/{species}): {len(items)}件")
-        for it in items:
+        for it in reversed(items):  # 古い記事から処理(新しい記事が後=一覧の上に並ぶ)
             src_url = BASE + it["url"]
             active_urls.add(src_url)
             checked += 1
+            posted_at = parse_event_at(it["title"])  # タイトル冒頭の日付=記事掲載日
             if src_url in existing:
+                # 既存レコードの並び順を修正(旧バージョンで取り込んだ分の是正)
+                if posted_at and not dry_run:
+                    conn.execute("UPDATE pets SET created_at=? WHERE source_url=? AND source='city'",
+                                 (posted_at, src_url))
                 continue
             try:
                 art = parse_article(fetch(it["url"]))
@@ -207,7 +212,7 @@ def sync(dry_run=False, with_photos=False):
                  "熊本市動物愛護センターの掲載情報" if kind == "found" else "",
                  "[]",
                  "sheltering" if kind == "found" else "searching",
-                 datetime.now(JST).isoformat(timespec="seconds"),
+                 posted_at or datetime.now(JST).isoformat(timespec="seconds"),
                  "city", src_url))
             added += 1
 
