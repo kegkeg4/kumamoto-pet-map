@@ -484,6 +484,27 @@ function viewHome(){
     el.innerHTML = pets.slice(0,6).map(petCard).join("");
   }).catch(function(){ var el=document.getElementById("reunited-list"); if(el) el.textContent=""; });
 }
+function telHref(s){
+  var m = (s||"").match(/0\d{1,4}[-\s]?\d{1,4}[-\s]?\d{3,4}/);
+  return m ? "tel:" + m[0].replace(/[^0-9]/g,"") : "";
+}
+function foundContactHtml(d){
+  var tel = telHref(d.contact);
+  return '<div style="background:#FFF8E8;border:2px solid var(--brass);border-radius:14px;padding:15px 16px;margin-top:14px">'+
+    '<h3 style="font-family:var(--fd);font-size:17px;color:var(--brass-deep)">💛 「うちの子かも!」と思ったら</h3>'+
+    '<ol style="font-size:14px;margin:8px 0 12px 22px;line-height:1.9">'+
+      '<li>写真・毛色・保護された場所をたしかめる</li>'+
+      '<li>下のボタンから連絡する</li>'+
+      '<li>「いつ・どこで いなくなったか」を伝える</li>'+
+    '</ol>'+
+    (tel
+      ?'<a class="btn btn-found" style="width:100%" href="'+tel+'">📞 電話でれんらくする</a>'
+      :(d.contact?'<div style="font-size:16px;font-weight:700;text-align:center;background:#fff;border-radius:10px;padding:12px">連絡先: '+esc(d.contact)+'</div>'
+                 :'<p class="hint">掲載者が連絡先を公開していません。</p>'))+
+    (d.source==="city"?'<p class="hint" style="margin-top:9px">熊本市動物愛護センターの収容情報です。受付時間内にお電話ください。お迎えには身分証明書などが必要な場合があります。詳しくは上の「元記事を見る」からご確認を。</p>':'')+
+  '</div>';
+}
+
 function petCard(p){
   var photo = p.photos.length
     ? '<img src="/uploads/'+esc(p.photos[0])+'" alt="" loading="lazy">'
@@ -732,6 +753,7 @@ function viewDetail(id, token){
             '<a class="btn btn-brass sm" href="#/flyer/'+d.id+'">チラシ / SNS文</a>'+
             '<button class="btn btn-ghost sm" id="btn-flag">通報</button>'+
           '</div>'+
+          (!isLost && d.status==="sheltering" ? foundContactHtml(d) : '')+
         '</div>'+
       '</div>'+
       (token ? adminPanelHtml(d, token) : '')+
@@ -877,9 +899,13 @@ function lostSearchHtml(d){
     '</div>':'');
 }
 function foundMapHtml(d){
+  var tel = telHref(d.contact);
   return '<h2 style="margin-top:26px">保護した場所</h2>'+
     '<div id="detail-map" class="map-box" style="height:320px"></div>'+
-    '<p class="hint" style="margin-top:8px">迷子の子は保護場所の近くに住んでいた可能性があります。ご近所での聞き込みも有効です。</p>';
+    '<p class="hint" style="margin-top:8px">迷子の子は保護場所の近くに住んでいた可能性があります。ご近所での聞き込みも有効です。</p>'+
+    (d.status==="sheltering" && tel
+      ?'<div class="bottom-bar no-print"><a class="btn btn-found" href="'+tel+'">📞 うちの子かも → 電話する</a></div>'
+      :'');
 }
 function initLostMap(d, token){
   var center = [d.lat, d.lng];
