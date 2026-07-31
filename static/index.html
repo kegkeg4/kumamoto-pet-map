@@ -429,7 +429,8 @@ function viewHome(){
     '<button id="tab-lost">🔍 さがしています</button>'+
     '<button id="tab-found">🏠 保護しています</button>'+
   '</div>'+
-  '<div class="filter-row" id="sp-filter">'+
+  '<input id="kw" type="search" placeholder="🔍 しぼりこみ(例: キジトラ 東区 / 首輪)" style="margin:2px 0 10px">'+
+    '<div class="filter-row" id="sp-filter">'+
     '<button data-sp="">すべて</button><button data-sp="dog">🐕 犬</button><button data-sp="cat">🐈 猫</button><button data-sp="other">🐾 その他</button>'+
   '</div>'+
   '<div id="pet-list" class="loading">読み込み中…</div>'+
@@ -462,10 +463,33 @@ function viewHome(){
           : "現在この条件の保護情報はありません。<br>迷子の子を保護したら「保護しています」から掲載をお願いします。";
         return;
       }
-      el.className = "grid";
-      el.innerHTML = res.pets.map(petCard).join("");
+      homeState.pets = res.pets;
+      renderList();
     }).catch(function(e){ el.className="empty"; el.textContent = e.message; });
   }
+  function renderList(){
+    var el = document.getElementById("pet-list");
+    var kws = (document.getElementById("kw").value||"").trim().toLowerCase().split(/\s+/).filter(Boolean);
+    var pets = (homeState.pets||[]).filter(function(p){
+      if(!kws.length) return true;
+      var hay = [p.name,p.breed,p.color,p.features,p.address,p.shelter_info].join(" ").toLowerCase();
+      return kws.every(function(k){ return hay.indexOf(k)>=0; });
+    });
+    if(!pets.length){
+      el.className = "empty";
+      el.innerHTML = kws.length
+        ? "「"+esc(kws.join(" "))+"」に合う掲載はありません。ことばを減らして試してください。"
+        : "現在この条件の掲載はありません。";
+      return;
+    }
+    el.className = "grid";
+    el.innerHTML = pets.map(petCard).join("") +
+      (kws.length?'<p class="hint" style="grid-column:1/-1">'+pets.length+'件が一致</p>':'');
+  }
+  var kwTimer=null;
+  document.getElementById("kw").addEventListener("input", function(){
+    clearTimeout(kwTimer); kwTimer=setTimeout(renderList, 200);
+  });
   document.getElementById("tab-lost").addEventListener("click", function(){ homeState.kind="lost"; loadList(); });
   document.getElementById("tab-found").addEventListener("click", function(){ homeState.kind="found"; loadList(); });
   Array.prototype.forEach.call(document.querySelectorAll("#sp-filter button"), function(b){
@@ -512,7 +536,7 @@ function petCard(p){
   var photo = p.photos.length
     ? '<img src="/uploads/'+esc(p.photos[0])+'" alt="" loading="lazy">'
     : (extPhotoOk(p)
-      ? '<img src="'+esc(p.photo_ext)+'" alt="" loading="lazy">'
+      ? '<img src="'+esc(p.photo_ext)+'" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.outerHTML=\'<span class=noimg>'+SP_EMOJI[p.species]+'</span>\'">'
       : '<span class="noimg">'+SP_EMOJI[p.species]+'</span>');
   var title = p.kind==="lost" ? esc(p.name) : "保護中の"+SP_JP[p.species];
   var tagCls = p.kind==="found" ? "name-tag found-tag" : "name-tag";
@@ -730,7 +754,7 @@ function viewDetail(id, token){
     var mainPhoto = photos.length
       ? '<img class="main-photo" src="'+esc(photos[0])+'" alt="">'
       : (extPhotoOk(d)
-        ? '<img class="main-photo" src="'+esc(d.photo_ext)+'" alt="">'+
+        ? '<img class="main-photo" src="'+esc(d.photo_ext)+'" alt="" referrerpolicy="no-referrer" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'none\'">'+
           '<p class="hint" style="text-align:center;margin-top:4px">写真: 熊本市動物愛護センター(元記事より)</p>'
         : '<div class="main-photo" style="display:flex;align-items:center;justify-content:center;background:#DCE0CC;font-size:54px">'+SP_EMOJI[d.species]+'</div>');
     var subs = photos.length>1
