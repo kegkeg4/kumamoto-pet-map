@@ -53,11 +53,11 @@ header{background:var(--pine);color:#fff;position:sticky;top:0;z-index:1100;box-
 .logo{display:flex;align-items:center;gap:8px;text-decoration:none;color:#fff}
 .logo b{font-family:var(--fd);font-weight:900;font-size:16.5px;letter-spacing:.02em}
 .logo small{display:block;font-size:9px;opacity:.72;letter-spacing:.14em}
-nav{margin-left:auto;display:flex;gap:4px}
-nav a{color:#fff;text-decoration:none;font-size:13.5px;padding:9px 11px;border-radius:8px;font-weight:700;white-space:nowrap}
-nav button.ft{background:rgba(255,255,255,.16);border:none;color:#fff;font-size:12.5px;padding:7px 12px;border-radius:999px;font-weight:700;white-space:nowrap}
-nav a:hover{background:rgba(255,255,255,.12)}
-nav a.cta{background:var(--clay);font-weight:700}
+.hwrap .ft{margin-left:auto;background:rgba(255,255,255,.16);border:none;color:#fff;font-size:12.5px;padding:8px 13px;border-radius:999px;font-weight:700;white-space:nowrap;flex:none}
+.mainnav{display:flex;background:var(--pine-deep)}
+.mainnav a{flex:1;text-align:center;color:rgba(255,255,255,.82);padding:12px 4px;font-size:14px;font-weight:700;text-decoration:none;white-space:nowrap;border-top:1px solid rgba(255,255,255,.08)}
+.mainnav a.on{background:rgba(255,255,255,.13);color:#fff;box-shadow:inset 0 -3.5px 0 var(--brass-light)}
+.mainnav a.cta{background:var(--clay);color:#fff}
 
 main{max-width:980px;margin:0 auto;padding:0 16px 80px}
 section{margin:24px 0}
@@ -72,7 +72,10 @@ h2::before{content:"";width:13px;height:13px;border-radius:50%;background:var(--
 .eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:11px;letter-spacing:.16em;color:var(--brass-deep);font-weight:700;background:#F7EDD3;border:1px solid #E8D9AC;padding:3px 12px;border-radius:999px}
 .hero p{color:var(--ink-soft);max-width:52ch;font-size:14.5px;margin-top:10px}
 .hero-actions{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap}
-.stats{display:flex;gap:24px;margin-top:22px;flex-wrap:wrap}
+.howto{display:flex;gap:10px;margin-top:20px}
+.howto div{flex:1;background:var(--card);border:1.5px solid var(--line);border-radius:14px;padding:13px 8px;text-align:center;font-size:12.5px;font-weight:700;color:var(--pine-deep);line-height:1.6}
+.howto span{display:flex;width:30px;height:30px;border-radius:50%;background:var(--brass);color:#fff;align-items:center;justify-content:center;font-family:var(--fd);font-weight:900;margin:0 auto 6px;box-shadow:0 0 0 3px var(--brass-light)}
+.stats{display:flex;gap:24px;margin-top:16px;flex-wrap:wrap}
 .stat b{font-family:var(--fd);font-weight:900;font-size:24px;color:var(--pine-deep)}
 .stat b em{font-style:normal;font-size:13px;color:var(--brass-deep)}
 .stat span{display:block;font-size:11px;color:var(--ink-soft)}
@@ -234,7 +237,7 @@ h2::before{content:"";width:13px;height:13px;border-radius:50%;background:var(--
   .hero-actions .btn{width:100%;font-size:17px;padding:17px}
   .stats{gap:0;justify-content:space-between;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 16px}
   .stat{text-align:center}
-  .board-tabs{position:sticky;top:53px;z-index:900;background:var(--moss);padding:10px 0 8px;margin:8px 0 6px}
+  .board-tabs{position:sticky;top:97px;z-index:900;background:var(--moss);padding:10px 0 8px;margin:8px 0 6px}
   .board-tabs button{flex:1;padding:12px 8px;font-size:14.5px}
   .grid{grid-template-columns:1fr 1fr;gap:10px}
   .pet-photo{height:118px}
@@ -244,7 +247,11 @@ h2::before{content:"";width:13px;height:13px;border-radius:50%;background:var(--
   .badge-corner{font-size:9.5px;padding:2px 8px}
   .map-box{height:52vh;min-height:300px;border-radius:14px}
   .panel{padding:15px 13px;border-radius:14px}
-  .paint-bar .btn{flex:1;font-size:13.5px;padding:11px 4px}
+  .paint-bar{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .paint-bar .btn{width:100%;font-size:14px;padding:12px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .paint-bar #btn-paint-save{grid-column:1/-1}
+  .paint-bar .coverage{grid-column:1/-1;justify-self:start}
+  .paint-bar .paint-help{grid-column:1/-1}
   .detail-photos{width:100%}
   .action-bar .btn{flex:1}
   .spec th{font-size:11px;padding-right:8px}
@@ -277,12 +284,13 @@ footer a{color:#E4C878}
       </svg>
       <span><b>くまもとペット捜索マップ</b><small>KUMAMOTO PET SEARCH MAP</small></span>
     </a>
-    <nav>
-      <button class="ft" id="font-toggle">字を大きく</button>
-      <a href="#/info">窓口・注意</a>
-      <a href="#/register" class="cta">登録する</a>
-    </nav>
+    <button class="ft" id="font-toggle">あ⁺ 字を大きく</button>
   </div>
+  <nav class="mainnav">
+    <a href="#/" data-nav="home">🏠 ホーム</a>
+    <a href="#/info" data-nav="info">📞 窓口・注意</a>
+    <a href="#/register" data-nav="register" class="cta">➕ 登録する</a>
+  </nav>
 </header>
 
 <main id="app"></main>
@@ -375,9 +383,16 @@ function resizeImage(file){
 /* ---------- ルーター ---------- */
 var maps = [];
 function destroyMaps(){ maps.forEach(function(m){ try{m.remove();}catch(e){} }); maps=[]; }
+function setNav(hash){
+  var key = hash==="/" ? "home" : hash.indexOf("/info")===0 ? "info" : hash.indexOf("/register")===0 ? "register" : "";
+  Array.prototype.forEach.call(document.querySelectorAll(".mainnav a"), function(a){
+    a.classList.toggle("on", a.getAttribute("data-nav")===key);
+  });
+}
 function route(){
   destroyMaps(); window.scrollTo(0,0);
   var h = location.hash.replace(/^#/,"") || "/";
+  setNav(h);
   var m;
   if(h === "/") return viewHome();
   if(h === "/register" || h === "/register/found") return viewRegister(h==="/register/found"?"found":"lost");
@@ -402,6 +417,11 @@ function viewHome(){
     '<div class="hero-actions">'+
       '<a class="btn btn-primary" href="#/register">🔍 いなくなった子を さがす</a>'+
       '<a class="btn btn-found" href="#/register/found">🏠 保護した子を 知らせる</a>'+
+    '</div>'+
+    '<div class="howto">'+
+      '<div><span>1</span>いなくなったら<br>すぐ登録</div>'+
+      '<div><span>2</span>みんなが<br>「見かけた!」を送る</div>'+
+      '<div><span>3</span>地図をたよりに<br>おうちへ</div>'+
     '</div>'+
     '<div class="stats" id="stats"></div>'+
   '</div>'+
@@ -464,6 +484,27 @@ function viewHome(){
     el.innerHTML = pets.slice(0,6).map(petCard).join("");
   }).catch(function(){ var el=document.getElementById("reunited-list"); if(el) el.textContent=""; });
 }
+function telHref(s){
+  var m = (s||"").match(/0\d{1,4}[-\s]?\d{1,4}[-\s]?\d{3,4}/);
+  return m ? "tel:" + m[0].replace(/[^0-9]/g,"") : "";
+}
+function foundContactHtml(d){
+  var tel = telHref(d.contact);
+  return '<div style="background:#FFF8E8;border:2px solid var(--brass);border-radius:14px;padding:15px 16px;margin-top:14px">'+
+    '<h3 style="font-family:var(--fd);font-size:17px;color:var(--brass-deep)">💛 「うちの子かも!」と思ったら</h3>'+
+    '<ol style="font-size:14px;margin:8px 0 12px 22px;line-height:1.9">'+
+      '<li>写真・毛色・保護された場所をたしかめる</li>'+
+      '<li>下のボタンから連絡する</li>'+
+      '<li>「いつ・どこで いなくなったか」を伝える</li>'+
+    '</ol>'+
+    (tel
+      ?'<a class="btn btn-found" style="width:100%" href="'+tel+'">📞 電話でれんらくする</a>'
+      :(d.contact?'<div style="font-size:16px;font-weight:700;text-align:center;background:#fff;border-radius:10px;padding:12px">連絡先: '+esc(d.contact)+'</div>'
+                 :'<p class="hint">掲載者が連絡先を公開していません。</p>'))+
+    (d.source==="city"?'<p class="hint" style="margin-top:9px">熊本市動物愛護センターの収容情報です。受付時間内にお電話ください。お迎えには身分証明書などが必要な場合があります。詳しくは上の「元記事を見る」からご確認を。</p>':'')+
+  '</div>';
+}
+
 function petCard(p){
   var photo = p.photos.length
     ? '<img src="/uploads/'+esc(p.photos[0])+'" alt="" loading="lazy">'
@@ -487,6 +528,7 @@ function petCard(p){
 function viewRegister(kind){
   app.innerHTML =
   '<section class="fade-in">'+
+    '<a href="#/" style="display:inline-flex;align-items:center;gap:6px;margin-top:16px;font-size:14px;font-weight:700;color:var(--pine-deep);text-decoration:none;background:#fff;border:1.5px solid var(--line);border-radius:999px;padding:8px 16px">← ホームにもどる</a>'+
     '<h2 style="margin-top:22px">'+(kind==="lost"?"いなくなった子の登録":"保護した子の登録")+'</h2>'+
     '<div class="panel">'+
       '<div class="msg" id="reg-msg"></div>'+
@@ -689,7 +731,8 @@ function viewDetail(id, token){
 
     app.innerHTML =
     '<section class="fade-in">'+
-      '<div class="detail-head" style="margin-top:20px">'+
+      '<a href="#/" style="display:inline-flex;align-items:center;gap:6px;margin-top:16px;font-size:14px;font-weight:700;color:var(--pine-deep);text-decoration:none;background:#fff;border:1.5px solid var(--line);border-radius:999px;padding:8px 16px">← ホームにもどる</a>'+
+      '<div class="detail-head" style="margin-top:14px">'+
         '<div class="detail-photos">'+mainPhoto+subs+'</div>'+
         '<div class="detail-info">'+
           '<span class="badge '+esc(d.status)+'">'+STATUS_JP[d.status]+'</span>'+
@@ -710,6 +753,7 @@ function viewDetail(id, token){
             '<a class="btn btn-brass sm" href="#/flyer/'+d.id+'">チラシ / SNS文</a>'+
             '<button class="btn btn-ghost sm" id="btn-flag">通報</button>'+
           '</div>'+
+          (!isLost && d.status==="sheltering" ? foundContactHtml(d) : '')+
         '</div>'+
       '</div>'+
       (token ? adminPanelHtml(d, token) : '')+
@@ -855,9 +899,13 @@ function lostSearchHtml(d){
     '</div>':'');
 }
 function foundMapHtml(d){
+  var tel = telHref(d.contact);
   return '<h2 style="margin-top:26px">保護した場所</h2>'+
     '<div id="detail-map" class="map-box" style="height:320px"></div>'+
-    '<p class="hint" style="margin-top:8px">迷子の子は保護場所の近くに住んでいた可能性があります。ご近所での聞き込みも有効です。</p>';
+    '<p class="hint" style="margin-top:8px">迷子の子は保護場所の近くに住んでいた可能性があります。ご近所での聞き込みも有効です。</p>'+
+    (d.status==="sheltering" && tel
+      ?'<div class="bottom-bar no-print"><a class="btn btn-found" href="'+tel+'">📞 うちの子かも → 電話する</a></div>'
+      :'');
 }
 function initLostMap(d, token){
   var center = [d.lat, d.lng];
@@ -880,7 +928,8 @@ function initLostMap(d, token){
   });
   function updateCoverage(){
     var n=Object.keys(drawn).length+Object.keys(pending).length;
-    document.getElementById("coverage").textContent = n?"さがした場所 "+n+"マス(約"+(n*0.023).toFixed(1)+"km²)":"まだ誰もさがしていません。最初の1人になってください";
+    var area = n*0.023;
+    document.getElementById("coverage").textContent = n?("さがした場所 "+n+"マス"+(area>=0.5?"(約"+area.toFixed(1)+"km²)":"")):"まだ誰もさがしていません。最初の1人になってください";
   }
   updateCoverage();
 
@@ -964,7 +1013,7 @@ function initLostMap(d, token){
       return;
     }
     if(!navigator.geolocation){ alert("この端末では位置情報が使えません。「なぞって塗る」をご利用ください。"); return; }
-    walkBtn.textContent="⏸ 記録中(タップで停止)";
+    walkBtn.textContent="⏸ 記録を止める";
     walkBtn.classList.add("active");
     document.getElementById("paint-help").textContent="いまGPSで記録中です。さがしながら歩くと、通った場所が自動で緑になります。";
     walkId=navigator.geolocation.watchPosition(function(pos){
@@ -1158,6 +1207,7 @@ function viewInfo(){
   try{ saved = JSON.parse(localStorage.getItem("kpm-checklist")||"{}"); }catch(e){}
   app.innerHTML =
   '<section class="fade-in">'+
+    '<a href="#/" style="display:inline-flex;align-items:center;gap:6px;margin-top:16px;font-size:14px;font-weight:700;color:var(--pine-deep);text-decoration:none;background:#fff;border:1.5px solid var(--line);border-radius:999px;padding:8px 16px">← ホームにもどる</a>'+
     '<div class="warn-box"><b>⚠ 余震・被災地での捜索は安全第一で。</b> 倒壊のおそれがある建物・ブロック塀・崖の近くには立ち入らないでください。夜間の捜索は2人以上で、ライトを持って。ご自身の避難と安全が最優先です。</div>'+
     '<h2>まずやることリスト</h2>'+
     '<p class="hint" style="margin-bottom:12px">チェックは端末に保存されます。</p>'+
@@ -1255,7 +1305,8 @@ function viewAdmin(){
 function viewTerms(){
   app.innerHTML =
   '<section class="fade-in" style="max-width:720px">'+
-    '<h1 style="font-size:22px;margin-top:24px">利用規約・プライバシーポリシー</h1>'+
+    '<a href="#/" style="display:inline-flex;align-items:center;gap:6px;margin-top:16px;font-size:14px;font-weight:700;color:var(--pine-deep);text-decoration:none;background:#fff;border:1.5px solid var(--line);border-radius:999px;padding:8px 16px">← ホームにもどる</a>'+
+    '<h1 style="font-size:22px;margin-top:20px">利用規約・プライバシーポリシー</h1>'+
     '<p class="hint">最終更新: 2026年7月31日</p>'+
     '<div class="panel" style="margin-top:14px;font-size:14px;line-height:2">'+
       '<h2 style="font-size:16px">このサイトについて</h2>'+
