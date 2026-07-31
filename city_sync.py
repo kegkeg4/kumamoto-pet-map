@@ -130,12 +130,27 @@ def parse_event_at(s, fallback_year=None):
         return ""
 
 
+def photo_mode():
+    # 0=写真なし / 1=市サイト画像の直リンク表示(既定・複製しない) / 2=保存(センター許諾後のみ)
+    return os.environ.get("CITY_PHOTOS", "1").strip()
+
+
+def first_photo_url(art):
+    for p in art.get("photos", []):
+        url = p if p.startswith("http") else BASE + p
+        if url.startswith(BASE):  # 市サイトの画像のみ許可
+            return url
+    return ""
+
+
 def ensure_columns(conn):
     cols = {r[1] for r in conn.execute("PRAGMA table_info(pets)")}
     if "source" not in cols:
         conn.execute("ALTER TABLE pets ADD COLUMN source TEXT DEFAULT ''")
     if "source_url" not in cols:
         conn.execute("ALTER TABLE pets ADD COLUMN source_url TEXT DEFAULT ''")
+    if "photo_ext" not in cols:
+        conn.execute("ALTER TABLE pets ADD COLUMN photo_ext TEXT DEFAULT ''")
     conn.commit()
 
 
@@ -166,10 +181,26 @@ def sync(dry_run=False, with_photos=False):
             checked += 1
             posted_at = parse_event_at(it["title"])  # タイトル冒頭の日付=記事掲載日
             if src_url in existing:
-                # 既存レコードの並び順を修正(旧バージョンで取り込んだ分の是正)
-                if posted_at and not dry_run:
-                    conn.execute("UPDATE pets SET created_at=? WHERE source_url=? AND source='city'",
-                                 (posted_at, src_url))
+                if not dry_run:
+                    # 既存レコードの並び順を修正(旧バージョンで取り込んだ分の是正)
+                    if posted_at:
+                        conn.execute("UPDATE pets SET created_at=? WHERE source_url=? AND source='city'",
+                                     (posted_at, src_url))
+                    # 写真未設定なら記事から補完(直リンクモード時)
+                    if photo_mode() == "1":
+                        row = conn.execute("SELECT photo_ext FROM pets WHERE source_url=? AND source='city'",
+                                           (src_url,)).fetchone()
+                        if row is not None and not row["photo_ext"]:
+                            try:
+                                art2 = parse_article(fetch(it["url"]))
+                                time.sleep(FETCH_INTERVAL)
+                                purl = first_photo_url(art2)
+                                if purl:
+                                    conn.execute("UPDATE pets SET photo_ext=? WHERE source_url=? AND source='city'",
+                                                 (purl, src_url))
+                                    print("  [写真補完] " + it["title"])
+                            except Exception as e:
+                                print("  [写真補完skip]", e)
                 continue
             try:
                 art = parse_article(fetch(it["url"]))
@@ -180,7 +211,8 @@ def sync(dry_run=False, with_photos=False):
             lat, lng = guess_coord(art.get("place", ""))
             event_at = parse_event_at(art.get("event_date", "")) or datetime.now(JST).strftime("%Y-%m-%dT12:00")
             photos = []
-            if with_photos:
+            photo_ext = first_photo_url(art) if photo_mode() == "1" else ""
+            if with_photos or photo_mode() == "2":
                 # TODO: センター許諾後に有効化。市サイトの画像を取得して /uploads に保存する
                 pass
             row = {
@@ -201,8 +233,8 @@ def sync(dry_run=False, with_photos=False):
             conn.execute(
                 """INSERT INTO pets(id, admin_token, kind, species, name, breed, size, color,
                    features, event_at, lat, lng, address, collar, microchip, contact,
-                   contact_public, shelter_info, photos, status, created_at, source, source_url)
-                   VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                   contact_public, shelter_info, photos, status, created_at, source, source_url, photo_ext)
+                   VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (pid, "", kind, species,
                  it["title"][:30] if kind == "lost" else "",
                  "", "medium", "",
@@ -213,7 +245,7 @@ def sync(dry_run=False, with_photos=False):
                  "[]",
                  "sheltering" if kind == "found" else "searching",
                  posted_at or datetime.now(JST).isoformat(timespec="seconds"),
-                 "city", src_url))
+                 "city", src_url, photo_ext))
             added += 1
 
     # 市サイトから消えた記事(=返還・掲載終了)は自動クローズ

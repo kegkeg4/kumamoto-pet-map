@@ -95,7 +95,8 @@ def init_db():
           hidden INTEGER DEFAULT 0,
           created_at TEXT,
           source TEXT DEFAULT '',
-          source_url TEXT DEFAULT ''
+          source_url TEXT DEFAULT '',
+          photo_ext TEXT DEFAULT ''
         );
         CREATE TABLE IF NOT EXISTS sightings(
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -167,6 +168,7 @@ def pet_public(row, include_contact=False):
         "status": row["status"], "created_at": row["created_at"],
         "source": (row["source"] if "source" in row.keys() else ""),
         "source_url": (row["source_url"] if "source_url" in row.keys() else ""),
+        "photo_ext": (row["photo_ext"] if "photo_ext" in row.keys() else ""),
         "contact_public": bool(row["contact_public"]),
         "contact": row["contact"] if (include_contact and row["contact_public"]) else "",
     }
