@@ -97,19 +97,22 @@ def parse_article(html):
         d["place"] = m.group(1).strip()
     # 特徴っぽい行(毛色・種類など)を控えめに拾う
     feats = []
-    for key in ("種類", "毛色", "性別", "首輪", "特徴", "体格"):
-        m = re.search(key + r"[::]?\s*([^\n]{1,50})", text)
-        if m:
+    KEYS = ("種類", "毛色", "性別", "首輪", "体格", "推定年齢", "特徴")
+    stop = r"(?=\s*(?:" + "|".join(KEYS) + r"|不明日|保護日|収容日|場\s*所)[::]|\n|$)"
+    for key in KEYS:
+        m = re.search(key + r"[::]\s*(.{1,50}?)" + stop, text)
+        if m and m.group(1).strip():
             feats.append(key + ": " + m.group(1).strip())
     d["features"] = " / ".join(feats)[:300]
-    # 写真URL: og:image(記事のメイン画像・最も確実)→記事フォルダ内のimgの順
-    photos = []
+    # 写真URL: 記事フォルダ内の実写真を最優先。次にダイジェスト画像(UploadFileOutput)。
+    # 市の共通ロゴ・OGP既定画像(og_image等)は絶対に採用しない
+    photos = re.findall(r'src="([^"]*kiji\d+[^"]*\.(?:jpe?g|png|gif))"', html, re.I)
     m = re.search(r'property="og:image"\s+content="([^"]+)"', html) or \
         re.search(r'content="([^"]+)"\s+property="og:image"', html)
-    if m:
+    if m and "UploadFileOutput" in m.group(1):
         photos.append(m.group(1))
-    photos += re.findall(r'src="([^"]*kiji\d+[^"]*\.(?:jpe?g|png))"', html, re.I)
-    d["photos"] = photos[:4]
+    BAD = ("og_image", "/ogp/", "/common/images/", "loading", "newwin", "btnplus", "footer_title")
+    d["photos"] = [p for p in photos if not any(b in p for b in BAD)][:4]
     return d
 
 
@@ -161,8 +164,12 @@ def first_photo_url(art, kiji_id=""):
 
 
 def photo_looks_valid(url, kiji_id):
-    # 記事自身の画像(kijiフォルダ or UploadFileOutput)以外は無効とみなす
-    return bool(url) and (kiji_id in url or "UploadFileOutput" in url)
+    # 記事自身の画像(kijiフォルダ or UploadFileOutput)以外は無効。市ロゴ等の共通画像も無効
+    if not url:
+        return False
+    if any(b in url for b in ("og_image", "/ogp/", "/common/images/")):
+        return False
+    return kiji_id in url or "UploadFileOutput" in url
 
 
 def ensure_columns(conn):
