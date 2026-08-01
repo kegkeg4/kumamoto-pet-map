@@ -688,15 +688,28 @@ class Handler(BaseHTTPRequestHandler):
         name = str(info.get("name") or "").strip()[:30]
         place = strip_banchi(str(info.get("place") or "")[:100])
         contact = str(info.get("contact") or "").strip()[:100]
-        # 重複検出: 電話番号の一致、または 名前+種別+区分の一致
+        # 重複検出: 名前だけ・電話だけでは同一とみなさない
+        # (同じ団体が多数の子のチラシを出す/同名の別の子がいるため)
+        # 同一と判定する条件: 種別・区分が同じで、
+        #   A) 名前が一致 かつ (場所が一致 or 電話が一致)
+        #   B) 名前なし同士で、電話が一致 かつ 場所が一致
+        def norm_name(x):
+            return re.sub(r"[\s・.。、]", "", (x or "")).lower()
+        def place_match(a, b):
+            a, b = (a or "").strip(), (b or "").strip()
+            return bool(a) and bool(b) and (a in b or b in a)
         new_phones = phones_in(contact)
+        nn = norm_name(name)
         dup = None
         with _db_lock:
             conn = db()
-            for r in conn.execute("SELECT id, name, species, kind, contact FROM pets WHERE hidden=0 ORDER BY created_at DESC LIMIT 500"):
-                if new_phones and (new_phones & phones_in(r["contact"] or "")) and r["kind"] == kind and r["species"] == species:
+            for r in conn.execute("SELECT id, name, species, kind, contact, address FROM pets WHERE hidden=0 ORDER BY created_at DESC LIMIT 500"):
+                if r["kind"] != kind or r["species"] != species:
+                    continue
+                phone_hit = bool(new_phones) and bool(new_phones & phones_in(r["contact"] or ""))
+                if nn and len(nn) >= 2 and norm_name(r["name"]) == nn and (place_match(place, r["address"]) or phone_hit):
                     dup = r; break
-                if name and len(name) >= 2 and r["name"] == name and r["species"] == species and r["kind"] == kind:
+                if not nn and not norm_name(r["name"]) and phone_hit and place_match(place, r["address"]):
                     dup = r; break
             if dup:
                 conn.close()
