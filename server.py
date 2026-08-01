@@ -434,8 +434,12 @@ class Handler(BaseHTTPRequestHandler):
             conn = db()
             rows = conn.execute(
                 "SELECT kind, status, COUNT(*) c FROM pets WHERE hidden=0 GROUP BY kind, status").fetchall()
+            today = datetime.now(JST).strftime("%Y-%m-%d")
+            today_new = conn.execute(
+                "SELECT COUNT(*) c FROM pets WHERE hidden=0 AND created_at LIKE ?",
+                (today + "%",)).fetchone()["c"]
             conn.close()
-        stats = {"lost_active": 0, "found_active": 0, "reunited": 0}
+        stats = {"lost_active": 0, "found_active": 0, "reunited": 0, "today_new": today_new}
         for r in rows:
             if r["kind"] == "lost" and r["status"] == "searching":
                 stats["lost_active"] += r["c"]
