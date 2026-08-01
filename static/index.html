@@ -395,7 +395,7 @@ function route(){
   setNav(h);
   var m;
   if(h === "/") return viewHome();
-  if(h === "/register" || h === "/register/found") return viewRegister(h==="/register/found"?"found":"lost");
+  if(h === "/register" || h.indexOf("/register/found")===0) return viewRegister(h.indexOf("/register/found")===0?"found":"lost");
   if(h === "/info") return viewInfo();
   if(h === "/admin") return viewAdmin();
   if(h === "/terms") return viewTerms();
@@ -556,11 +556,20 @@ function petCard(p){
 
 /* ---------- 登録 ---------- */
 function viewRegister(kind){
+  var relFrom = "";
+  var qm = location.hash.indexOf("?");
+  if(qm >= 0){
+    var qp = location.hash.slice(qm+1).split("&");
+    for(var qi=0; qi<qp.length; qi++){
+      if(qp[qi].indexOf("from=")===0) relFrom = qp[qi].slice(5).replace(/[^a-z0-9]/g,"").slice(0,8);
+    }
+  }
   app.innerHTML =
   '<section class="fade-in">'+
     '<a href="#/" style="display:inline-flex;align-items:center;gap:6px;margin-top:16px;font-size:14px;font-weight:700;color:var(--pine-deep);text-decoration:none;background:#fff;border:1.5px solid var(--line);border-radius:999px;padding:8px 16px">← ホームにもどる</a>'+
     '<h2 style="margin-top:22px">'+(kind==="lost"?"いなくなった子の登録":"保護した子の登録")+'</h2>'+
-    '<div class="panel" style="border:2px dashed var(--brass);background:#FFFBF0;margin-bottom:16px">'+
+    '<div id="rel-info"></div>'+
+        '<div class="panel" style="border:2px dashed var(--brass);background:#FFFBF0;margin-bottom:16px">'+
       '<h3 style="font-family:var(--fd);font-size:16px;color:var(--brass-deep)">📸 チラシのスクショがあれば、それだけでOK</h3>'+
       '<p class="hint" style="margin:6px 0 10px">SNSで見かけた捜索チラシや、お手元のチラシの写真を選ぶと、AIが読み取ってそのまま掲載します(1枚に1匹)。すでに掲載されている子は重複登録されません。</p>'+
       '<input type="file" id="in-file" accept="image/*">'+
@@ -665,7 +674,22 @@ function viewRegister(kind){
     picked = e.latlng;
     if(marker) marker.setLatLng(e.latlng); else marker = L.marker(e.latlng).addTo(map);
   });
-  document.getElementById("in-go").addEventListener("click", function(){
+  if(relFrom && kind==="found"){
+    api("/api/pets/"+relFrom).then(function(src){
+      document.getElementById("rel-info").innerHTML =
+        '<div style="background:#E8F3E9;border:2px solid #2E7D43;border-radius:14px;padding:13px 15px;margin:14px 0">'+
+          '🤲 <b>「'+esc(src.name||"(名前なし)")+'」を保護した報告</b>として登録します。種類などは入力済みです。'+
+          '<b>保護した場所と、あなたの連絡先</b>を入れてください。'+
+        '</div>';
+      var spBtn = document.querySelector('.sp-toggle button[data-sp="'+src.species+'"]');
+      if(spBtn) spBtn.click();
+      if(src.breed) document.getElementById("f-breed").value = src.breed;
+      if(src.color) document.getElementById("f-color").value = src.color;
+      var fe = document.getElementById("f-features");
+      if(fe && !fe.value) fe.value = "「"+(src.name||"(名前なし)")+"」のさがしています掲載を見て保護しました。";
+    }).catch(function(){ relFrom=""; });
+  }
+    document.getElementById("in-go").addEventListener("click", function(){
     var f = document.getElementById("in-file").files[0];
     var log = document.getElementById("in-log");
     if(!f){ log.innerHTML = '<span style="color:var(--clay)">先に画像を選んでください</span>'; return; }
@@ -733,6 +757,7 @@ function viewRegister(kind){
     });
     chain.then(function(){
       return api("/api/pets",{method:"POST",body:{
+        related: relFrom,
         kind:state.kind, species:state.species,
         name:name,
         breed:document.getElementById("f-breed").value,
@@ -796,6 +821,15 @@ function viewDetail(id, token){
     app.innerHTML =
     '<section class="fade-in">'+
       '<a href="#/" style="display:inline-flex;align-items:center;gap:6px;margin-top:16px;font-size:14px;font-weight:700;color:var(--pine-deep);text-decoration:none;background:#fff;border:1.5px solid var(--line);border-radius:999px;padding:8px 16px">← ホームにもどる</a>'+
+      (d.kind==="lost" && d.rescues && d.rescues.length
+        ? '<div style="background:#E8F3E9;border:2.5px solid #2E7D43;border-radius:14px;padding:14px 16px;margin-top:14px">'+
+            '<h3 style="font-family:var(--fd);font-size:17px;color:#1E5A2E">🤲 この子を「保護しました」という報告があります!</h3>'+
+            d.rescues.map(function(r){
+              return '<a class="btn btn-found sm" style="margin-top:8px" href="#/pet/'+r.id+'">保護の報告を見る('+esc(r.address||"場所未記載")+' / '+fmtDate(r.created_at)+')</a>';
+            }).join(" ")+
+            '<p class="hint" style="margin-top:8px">報告ページの連絡先から、写真や特徴で確認をしてください。</p>'+
+          '</div>'
+        : '')+
       '<div class="detail-head" style="margin-top:14px">'+
         '<div class="detail-photos">'+mainPhoto+subs+'</div>'+
         '<div class="detail-info">'+
@@ -811,10 +845,14 @@ function viewDetail(id, token){
             (!isLost && d.shelter_info?'<tr><th>現在の預かり</th><td>'+esc(d.shelter_info)+'</td></tr>':'')+
             (d.contact?'<tr><th>連絡先</th><td><b>'+esc(d.contact)+'</b></td></tr>':'')+
           '</table>'+
+          (d.related_id
+            ? '<div style="background:#E8F3E9;border:1.5px solid #7FAE8B;border-radius:12px;padding:11px 14px;font-size:13.5px;margin-top:12px">🔗 この報告は「<b>'+esc(d.related_name)+'</b>」をさがしています掲載への保護報告です。<div style="margin-top:8px"><a class="btn btn-secondary sm" href="#/pet/'+d.related_id+'">さがしています掲載を見る</a></div></div>'
+            : '')+
           (d.source==="sns"?'<div style="background:#F3EDF8;border:1.5px solid #C9B8DC;border-radius:12px;padding:11px 14px;font-size:13px;margin-top:12px">📣 <b>SNSで拡散されている捜索チラシ</b>の情報です。連絡先はチラシ記載の窓口(団体・ご本人)です。ご本人からの修正・削除のご依頼は<a href="#/terms">運営</a>まで。</div>':'')+
           (d.source==="city"?'<div style="background:#EDF2F7;border:1.5px solid #B9C9D8;border-radius:12px;padding:11px 14px;font-size:13px;margin-top:12px">🏛 <b>熊本市動物愛護センターの掲載情報</b>です(地図はおおよその位置)。写真・最新状況は元記事でご確認ください。<div style="margin-top:8px"><a class="btn btn-secondary sm" href="'+esc(d.source_url)+'" target="_blank" rel="noopener">元記事を見る(熊本市サイト)</a></div></div>':'')+
           '<div class="action-bar no-print">'+
             (isLost && d.status==="searching"?'<button class="btn btn-primary sm" id="btn-sight">👀 見かけた!を知らせる</button>':'')+
+            (isLost && d.status==="searching"?'<a class="btn btn-found sm" href="#/register/found?from='+d.id+'">🤲 この子を保護しました</a>':'')+
             '<a class="btn btn-brass sm" href="#/flyer/'+d.id+'">チラシ / SNS文</a>'+
             '<button class="btn btn-ghost sm" id="btn-flag">通報</button>'+
           '</div>'+
