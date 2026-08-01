@@ -251,7 +251,7 @@ def template_texts(pet):
         x = (f"【保護しています】{sp}を保護中です\n"
              f"{pet['color']} {pet['breed'] or sp}。{date}頃 {pet['address'] or '熊本'}で保護。\n"
              f"心当たりのある飼い主さんはリンク先をご確認ください。\n"
-             f"{tag} #熊本地震 #拡散希望")
+             f"{tag} #迷子犬 #迷子猫 #熊本 #拡散希望")
         long = (f"【保護しています/熊本】\n\n■種類: {pet['breed'] or sp}\n■毛色: {pet['color']}\n"
                 f"■特徴: {pet['features']}\n■保護日時: {date}頃\n■保護場所: {pet['address']}\n"
                 f"■現在: {pet['shelter_info'] or 'ページ参照'}\n\n"
@@ -261,7 +261,7 @@ def template_texts(pet):
     x = (f"【拡散希望】迷子の{sp}をさがしています\n"
          f"{pet['name']}({pet['breed'] or sp}・{pet['color']})\n"
          f"{date}頃 {pet['address'] or '熊本'}で行方不明に。\n"
-         f"目撃情報はリンク先から投稿できます🙏\n{tag} #熊本地震 #拡散希望")
+         f"目撃情報はリンク先から投稿できます🙏\n{tag} #迷子犬 #迷子猫 #熊本 #拡散希望")
     long = (f"【迷子の{sp}をさがしています/熊本】\n\n■名前: {pet['name']}\n"
             f"■種類: {pet['breed'] or sp}\n■毛色: {pet['color']}\n■特徴: {pet['features']}\n"
             f"■いなくなった日時: {date}頃\n■場所: {pet['address'] or '熊本'}\n"
@@ -283,8 +283,8 @@ def claude_texts(pet):
     sp = SPECIES_JP.get(pet["species"], "")
     mode = "保護したペットの飼い主さがし" if pet["kind"] == "found" else "迷子ペットの捜索"
     prompt = (
-        f"熊本地震で{mode}の広報文を作成。誇張せず、感情に配慮。"
-        "(1)X用投稿(140字以内、#熊本地震 #拡散希望 と種別タグを含む)、"
+        f"熊本で{mode}の広報文を作成。誇張せず、感情に配慮。"
+        "(1)X用投稿(140字以内、#迷子犬 #迷子猫 #熊本 #拡散希望 と種別タグを含む)、"
         "(2)Instagram/Facebook用長文、(3)チラシ用キャッチ(10字以内)、(4)チラシ注意書き(50字以内"
         + ("、猫は驚かせない・追いかけない旨" if pet["species"] == "cat" else "") + ")。\n"
         f"種別:{sp} 名前:{pet['name']} 品種:{pet['breed']} 毛色:{pet['color']} 特徴:{pet['features']} "
