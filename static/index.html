@@ -4,14 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>くまもとペット捜索マップ|迷子の犬・猫と飼い主さんを繋ぐ無料マップ</title>
-<meta name="description" content="令和8年熊本地震で迷子になった犬・猫の捜索情報と保護情報を1つの地図で繋ぐ、完全無料の掲示板です。会員登録不要。">
+<meta name="description" content="熊本で迷子になった犬・猫の捜索情報と保護情報を1つの地図で繋ぐ、完全無料の掲示板です。会員登録不要。">
 <meta property="og:title" content="くまもとペット捜索マップ|迷子の犬・猫と飼い主さんを繋ぐ">
-<meta property="og:description" content="令和8年熊本地震対応。「さがしています」と「保護しています」を1つの地図で。目撃投稿・捜索範囲の共有・チラシ作成まで完全無料。">
+<meta property="og:description" content="熊本の「さがしています」と「保護しています」を1つの地図で。目撃投稿・捜索範囲の共有・チラシ作成まで完全無料。">
 <meta property="og:type" content="website">
 <meta property="og:image" content="/ogp.png">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="くまもとペット捜索マップ">
-<meta name="twitter:description" content="令和8年熊本地震対応。迷子の犬・猫と飼い主さんを繋ぐ無料マップ。">
+<meta name="twitter:description" content="熊本の迷子の犬・猫と飼い主さんを繋ぐ無料マップ。">
 <meta name="twitter:image" content="/ogp.png">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
@@ -55,7 +55,7 @@ header{background:var(--pine);color:#fff;position:sticky;top:0;z-index:1100;box-
 .logo small{display:block;font-size:9px;opacity:.72;letter-spacing:.14em}
 .hwrap .ft{margin-left:auto;background:rgba(255,255,255,.16);border:none;color:#fff;font-size:12.5px;padding:8px 13px;border-radius:999px;font-weight:700;white-space:nowrap;flex:none}
 .mainnav{display:flex;background:var(--pine-deep)}
-.mainnav a{flex:1;text-align:center;color:rgba(255,255,255,.82);padding:12px 4px;font-size:14px;font-weight:700;text-decoration:none;white-space:nowrap;border-top:1px solid rgba(255,255,255,.08)}
+.mainnav a{flex:1;text-align:center;color:rgba(255,255,255,.82);padding:12px 2px;font-size:13.5px;font-weight:700;text-decoration:none;white-space:nowrap;border-top:1px solid rgba(255,255,255,.08)}
 .mainnav a.on{background:rgba(255,255,255,.13);color:#fff;box-shadow:inset 0 -3.5px 0 var(--brass-light)}
 .mainnav a.cta{background:var(--clay);color:#fff}
 
@@ -270,7 +270,7 @@ footer a{color:#E4C878}
 </style>
 </head>
 <body>
-<div class="quake-band">🐾 <b>令和8年(2026年)熊本地震 対応</b> — このサイトは完全無料・非営利で運営しています。緊急の人命救助は119へ。</div>
+<div class="quake-band">🐾 完全無料・非営利で運営しています。令和8年熊本地震の迷子・保護情報も掲載中です。</div>
 <header>
   <div class="hwrap">
     <a class="logo" href="#/">
@@ -289,14 +289,14 @@ footer a{color:#E4C878}
   <nav class="mainnav">
     <a href="#/" data-nav="home">🏠 ホーム</a>
     <a href="#/info" data-nav="info">📞 窓口・注意</a>
-    <a href="#/register" data-nav="register" class="cta">➕ 登録する</a>
+    <a href="#/register" data-nav="register" class="cta">➕ 迷子・保護を登録</a>
   </nav>
 </header>
 
 <main id="app"></main>
 
 <footer>
-  <p>くまもとペット捜索マップ — 令和8年熊本地震 災害対応・完全無料</p>
+  <p>くまもとペット捜索マップ — 熊本の迷子ペットと飼い主さんを繋ぐ・完全無料</p>
   <p style="margin-top:6px">掲載情報は投稿者によるものです。悪質な投稿は各ページの通報ボタンからお知らせください。</p>
   <p style="margin-top:6px">運営: 合同会社CRK(熊本市) / <a href="#/terms">利用規約・プライバシー</a> / <a href="#/contact">お問い合わせ</a></p>
 </footer>
@@ -412,9 +412,9 @@ var homeState = {kind:"lost", species:""};
 function viewHome(){
   app.innerHTML =
   '<div class="hero fade-in">'+
-    '<span class="eyebrow">🐾 令和8年熊本地震 対応 / 完全無料・会員登録不要</span>'+
+    '<span class="eyebrow">🐾 熊本の迷子ペット捜索マップ / 完全無料・会員登録不要</span>'+
     '<h1>はぐれた子と、<br>もう一度会うために。</h1>'+
-    '<p>地震でいなくなった犬・猫と、保護してくれた人を、1つの地図でつなぎます。使い方はかんたん。ぜんぶ無料です。</p>'+
+    '<p>いなくなった犬・猫と、保護してくれた人を、1つの地図でつなぎます。使い方はかんたん。ぜんぶ無料です。</p>'+
     '<div class="hero-actions">'+
       '<a class="btn btn-primary" href="#/register">🔍 いなくなった子を さがす</a>'+
       '<a class="btn btn-found" href="#/register/found">🏠 保護した子を 知らせる</a>'+
@@ -641,7 +641,7 @@ function viewRegister(kind){
       '</div>'+
       '<p class="hint" id="contact-hint"></p>'+
       '<div class="honeypot" aria-hidden="true"><input id="f-website" tabindex="-1" autocomplete="off"></div>'+
-      '<div style="margin-top:22px"><button class="btn btn-primary" id="reg-submit" style="width:100%">この内容で登録する(無料)</button></div>'+
+      '<div style="margin-top:22px"><button class="btn btn-primary" id="reg-submit" style="width:100%">この内容で掲載する(無料)</button></div>'+
       '<p class="hint" style="margin-top:10px">登録後に表示される「管理用URL」でステータス変更(再会報告など)ができます。</p>'+
     '</div>'+
   '</section>';
@@ -791,7 +791,7 @@ function viewRegister(kind){
       location.hash = "#/done/"+r.id+"/"+r.admin_token;
     }).catch(function(e){
       msg.className="msg err"; msg.textContent=e.message;
-      btn.disabled=false; btn.textContent="この内容で登録する(無料)"; window.scrollTo(0,0);
+      btn.disabled=false; btn.textContent="この内容で掲載する(無料)"; window.scrollTo(0,0);
     });
   });
 }
@@ -1517,7 +1517,7 @@ function viewTerms(){
     '<p class="hint">最終更新: 2026年7月31日</p>'+
     '<div class="panel" style="margin-top:14px;font-size:14px;line-height:2">'+
       '<h2 style="font-size:16px">このサイトについて</h2>'+
-      '<p>「くまもとペット捜索マップ」(以下「本サイト」)は、令和8年熊本地震で迷子になったペットと飼い主さんの再会を支援するため、合同会社CRK(熊本市)が<b>完全無料・非営利</b>で運営するサービスです。</p>'+
+      '<p>「くまもとペット捜索マップ」(以下「本サイト」)は、迷子になったペットと飼い主さんの再会を支援するため、合同会社CRK(熊本市)が<b>完全無料・非営利</b>で運営するサービスです(令和8年熊本地震を機に開設)。</p>'+
       '<h2 style="font-size:16px;margin-top:20px">投稿について</h2>'+
       '<p>・投稿された情報(ペットの情報、日時、場所、写真、任意で公開設定した連絡先)は、<b>誰でも閲覧できる形で公開されます</b>。<br>'+
       '・連絡先の公開は任意です。公開しない場合、連絡先は表示されません。<br>'+
