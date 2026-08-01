@@ -12,6 +12,9 @@ import os
 import re
 import secrets
 import sqlite3
+import zipfile
+import tempfile
+import shutil
 import string
 import threading
 import urllib.request
@@ -376,6 +379,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.serve_file(os.path.join(STATIC_DIR, "ogp.png"), "image/png")
         if path == "/api/admin/list":
             return self.api_admin_list()
+        if path == "/api/admin/backup":
+            return self.api_admin_backup()
         if path == "/api/pets":
             return self.api_list_pets()
         if path == "/api/news":
@@ -722,6 +727,40 @@ class Handler(BaseHTTPRequestHandler):
         self.send_json(claude_texts(pet) or template_texts(pet))
 
     # ---------- 管理(通報対応) ----------
+    def api_admin_backup(self):
+        """全データ(DB+写真)のzipバックアップをダウンロード(管理者のみ)"""
+        if not ADMIN_KEY or not secrets.compare_digest(self.qs("key"), ADMIN_KEY):
+            return self.send_json({"error": "権限がありません"}, 403)
+        tmpdir = tempfile.mkdtemp(prefix="petmap-bk-")
+        try:
+            # WAL中でも安全なスナップショットを作る(SQLite backup API)
+            db_copy = os.path.join(tmpdir, "app.db")
+            with _db_lock:
+                src = sqlite3.connect(DB_PATH)
+                dst = sqlite3.connect(db_copy)
+                src.backup(dst)
+                dst.close(); src.close()
+            stamp = datetime.now(JST).strftime("%Y%m%d-%H%M")
+            zpath = os.path.join(tmpdir, f"petmap-backup-{stamp}.zip")
+            with zipfile.ZipFile(zpath, "w", zipfile.ZIP_DEFLATED) as z:
+                z.write(db_copy, "app.db")
+                if os.path.isdir(UPLOAD_DIR):
+                    for fn in os.listdir(UPLOAD_DIR):
+                        fp = os.path.join(UPLOAD_DIR, fn)
+                        if os.path.isfile(fp):
+                            z.write(fp, "uploads/" + fn)
+            with open(zpath, "rb") as f:
+                data = f.read()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/zip")
+            self.send_header("Content-Disposition",
+                             f'attachment; filename="petmap-backup-{stamp}.zip"')
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+        finally:
+            shutil.rmtree(tmpdir, ignore_errors=True)
+
     def api_admin_list(self):
         if not ADMIN_KEY or not secrets.compare_digest(self.qs("key"), ADMIN_KEY):
             return self.send_json({"error": "権限がありません"}, 403)
