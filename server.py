@@ -31,6 +31,7 @@ LNG_RANGE = (129.8, 131.6)
 RATE_LIMITS = {
     "register": (10, 86400),  # 災害時につき通常より緩め: 登録10件/日
     "intake":   (8, 86400),   # チラシ読み取り登録8件/日(AI費用対策)
+    "contact":  (5, 86400),   # お問い合わせ5件/日
     "sighting": (30, 3600),
     "generate": (10, 3600),
     "upload":   (30, 3600),
@@ -107,6 +108,20 @@ def init_db():
           source_url TEXT DEFAULT '',
           photo_ext TEXT DEFAULT '',
           related_id TEXT DEFAULT ''
+        );
+        CREATE TABLE IF NOT EXISTS inquiries(
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          category TEXT NOT NULL,
+          body TEXT NOT NULL,
+          contact TEXT DEFAULT '',
+          url TEXT DEFAULT '',
+          status TEXT DEFAULT 'new',
+          created_at TEXT
+        );
+        CREATE TABLE IF NOT EXISTS news(
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          body TEXT NOT NULL,
+          created_at TEXT
         );
         CREATE TABLE IF NOT EXISTS sightings(
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -326,6 +341,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.api_admin_list()
         if path == "/api/pets":
             return self.api_list_pets()
+        if path == "/api/news":
+            return self.api_news()
         if path == "/api/stats":
             return self.api_stats()
         m = re.fullmatch(r"/api/pets/([a-z0-9]{8})", path)
@@ -346,6 +363,12 @@ class Handler(BaseHTTPRequestHandler):
             return self.api_admin_moderate()
         if path == "/api/intake":
             return self.api_intake()
+        if path == "/api/contact":
+            return self.api_contact()
+        if path == "/api/admin/news":
+            return self.api_admin_news()
+        if path == "/api/admin/inquiry":
+            return self.api_admin_inquiry()
         m = re.fullmatch(r"/api/pets/([a-z0-9]{8})/(sightings|searched|updates|flag)", path)
         if m:
             return {"sightings": self.api_create_sighting,
@@ -673,9 +696,15 @@ class Handler(BaseHTTPRequestHandler):
             sightings = conn.execute(
                 "SELECT id, pet_id, seen_at, memo, flags, hidden FROM sightings "
                 "WHERE flags>0 OR hidden=1 ORDER BY hidden DESC, flags DESC LIMIT 100").fetchall()
+            inquiries = conn.execute(
+                "SELECT id, category, body, contact, url, status, created_at FROM inquiries "
+                "ORDER BY (status='new') DESC, id DESC LIMIT 100").fetchall()
+            news = conn.execute("SELECT id, body, created_at FROM news ORDER BY id DESC LIMIT 20").fetchall()
             conn.close()
         self.send_json({"pets": [dict(r) for r in pets],
-                        "sightings": [dict(r) for r in sightings]})
+                        "sightings": [dict(r) for r in sightings],
+                        "inquiries": [dict(r) for r in inquiries],
+                        "news": [dict(r) for r in news]})
 
     def api_admin_moderate(self):
         body = self.read_json() or {}
@@ -692,6 +721,75 @@ class Handler(BaseHTTPRequestHandler):
                 conn.execute(f"UPDATE {table} SET hidden=0, flags=0 WHERE id=?", (item_id,))
             else:
                 conn.execute(f"UPDATE {table} SET hidden=1 WHERE id=?", (item_id,))
+            conn.commit(); conn.close()
+        self.send_json({"ok": True})
+
+    # ---------- お知らせ・お問い合わせ ----------
+    CONTACT_CATEGORIES = ("feature", "delete", "bug", "other")
+
+    def api_news(self):
+        with _db_lock:
+            conn = db()
+            rows = conn.execute("SELECT id, body, created_at FROM news ORDER BY id DESC LIMIT 10").fetchall()
+            conn.close()
+        self.send_json({"news": [dict(r) for r in rows]})
+
+    def api_contact(self):
+        body = self.read_json() or {}
+        iph = ip_hash(self.client_ip())
+        with _db_lock:
+            conn = db()
+            ok = check_rate(conn, iph, "contact")
+            conn.commit()
+            if not ok:
+                conn.close()
+                return self.send_json({"error": "本日の送信上限に達しました"}, 429)
+            cat = str(body.get("category") or "")
+            text = str(body.get("body") or "").strip()
+            if cat not in self.CONTACT_CATEGORIES:
+                conn.close()
+                return self.send_json({"error": "種類を選んでください"}, 400)
+            if not (5 <= len(text) <= 2000):
+                conn.close()
+                return self.send_json({"error": "内容は5文字以上2000文字以内で入力してください"}, 400)
+            if body.get("website"):  # ハニーポット
+                conn.close()
+                return self.send_json({"ok": True})
+            conn.execute(
+                "INSERT INTO inquiries(category, body, contact, url, created_at) VALUES(?,?,?,?,?)",
+                (cat, text[:2000], str(body.get("contact") or "")[:100],
+                 str(body.get("url") or "")[:300], now_iso()))
+            conn.commit(); conn.close()
+        self.send_json({"ok": True})
+
+    def api_admin_news(self):
+        body = self.read_json() or {}
+        if not ADMIN_KEY or not secrets.compare_digest(str(body.get("key") or ""), ADMIN_KEY):
+            return self.send_json({"error": "権限がありません"}, 403)
+        action = body.get("action")
+        with _db_lock:
+            conn = db()
+            if action == "add":
+                text = str(body.get("body") or "").strip()
+                if not (1 <= len(text) <= 500):
+                    conn.close()
+                    return self.send_json({"error": "1〜500文字で入力してください"}, 400)
+                conn.execute("INSERT INTO news(body, created_at) VALUES(?,?)", (text, now_iso()))
+            elif action == "delete":
+                conn.execute("DELETE FROM news WHERE id=?", (int(body.get("id") or 0),))
+            else:
+                conn.close()
+                return self.send_json({"error": "不正なリクエストです"}, 400)
+            conn.commit(); conn.close()
+        self.send_json({"ok": True})
+
+    def api_admin_inquiry(self):
+        body = self.read_json() or {}
+        if not ADMIN_KEY or not secrets.compare_digest(str(body.get("key") or ""), ADMIN_KEY):
+            return self.send_json({"error": "権限がありません"}, 403)
+        with _db_lock:
+            conn = db()
+            conn.execute("UPDATE inquiries SET status='done' WHERE id=?", (int(body.get("id") or 0),))
             conn.commit(); conn.close()
         self.send_json({"ok": True})
 
