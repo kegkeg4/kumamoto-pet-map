@@ -53,6 +53,43 @@ FOUND_STATUS = ("sheltering", "reunited", "closed")
 
 ADMIN_KEY = os.environ.get("ADMIN_KEY", "").strip()
 
+NOTIFY_WEBHOOK = os.environ.get("NOTIFY_WEBHOOK", "").strip()  # (任意)Slack/Discord Webhook URL
+# メール通知: 既定で info@crk.jp 宛て・Lolipop経由。SMTP_PASS(メールパスワード)の設定だけで有効化
+SMTP_HOST = os.environ.get("SMTP_HOST", "smtp.lolipop.jp").strip()
+SMTP_PORT = int(os.environ.get("SMTP_PORT", "465") or 465)
+SMTP_USER = os.environ.get("SMTP_USER", "info@crk.jp").strip()
+SMTP_PASS = os.environ.get("SMTP_PASS", "").strip()
+NOTIFY_TO = os.environ.get("NOTIFY_TO", "info@crk.jp").strip()
+
+
+def notify_admin(text):
+    """運営への通知(webhook/メール)。失敗してもサービス本体には影響させない"""
+    def _send():
+        if NOTIFY_WEBHOOK:
+            try:
+                key = "content" if "discord.com" in NOTIFY_WEBHOOK else "text"
+                body = json.dumps({key: text[:1800]}).encode()
+                req = urllib.request.Request(NOTIFY_WEBHOOK, data=body,
+                                             headers={"Content-Type": "application/json"}, method="POST")
+                urllib.request.urlopen(req, timeout=8)
+            except Exception as e:
+                print("[notify] webhook失敗:", e)
+        if SMTP_HOST and SMTP_USER and SMTP_PASS and NOTIFY_TO:
+            try:
+                import smtplib
+                from email.mime.text import MIMEText
+                from email.header import Header
+                msg = MIMEText(text, "plain", "utf-8")
+                msg["Subject"] = Header("【ペット捜索マップ】通知", "utf-8")
+                msg["From"] = SMTP_USER
+                msg["To"] = NOTIFY_TO
+                with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=15) as sv:
+                    sv.login(SMTP_USER, SMTP_PASS)
+                    sv.send_message(msg)
+            except Exception as e:
+                print("[notify] メール失敗:", e)
+    threading.Thread(target=_send, daemon=True).start()
+
 _db_lock = threading.Lock()
 
 
@@ -760,6 +797,11 @@ class Handler(BaseHTTPRequestHandler):
                 (cat, text[:2000], str(body.get("contact") or "")[:100],
                  str(body.get("url") or "")[:300], now_iso()))
             conn.commit(); conn.close()
+        CAT_JP = {"feature": "機能要望", "delete": "削除依頼", "bug": "不具合", "other": "意見"}
+        notify_admin("💬 お問い合わせ【" + CAT_JP.get(cat, cat) + "】\n" + text[:300] +
+                     ("\n対象: " + str(body.get("url") or "") if body.get("url") else "") +
+                     ("\n連絡先: " + str(body.get("contact") or "") if body.get("contact") else "") +
+                     "\n→ 管理画面: /#/admin")
         self.send_json({"ok": True})
 
     def api_admin_news(self):
@@ -867,6 +909,8 @@ class Handler(BaseHTTPRequestHandler):
                  json.dumps([photo]), "sheltering" if kind == "found" else "searching",
                  datetime.now(JST).isoformat(timespec="seconds"), "sns", "", ""))
             conn.commit(); conn.close()
+        notify_admin("📸 スクショから新規掲載: " + ("さがしています" if kind == "lost" else "保護しています") +
+                     " / " + (name or "(名前なし)") + " / " + (place or "場所不明") + "\n/#/pet/" + pid)
         return self.send_json({"ok": True, "action": "added", "id": pid, "token": token,
                                "summary": {"kind": kind, "species": species, "name": name,
                                            "place": place, "contact": contact}})
@@ -1009,6 +1053,10 @@ def main():
     print(f"くまもとペット捜索マップ 起動: http://0.0.0.0:{port}")
     print(f"AI生成: {'有効' if os.environ.get('ANTHROPIC_API_KEY') else '無効(テンプレートで動作)'}")
     print(f"管理画面: {'有効(/#/admin)' if ADMIN_KEY else '無効(ADMIN_KEY未設定)'}")
+    mail_on = bool(SMTP_PASS)
+    hook_on = bool(NOTIFY_WEBHOOK)
+    print("通知: " + ("メール→" + NOTIFY_TO if mail_on else "") + (" / " if mail_on and hook_on else "") +
+          ("Webhook" if hook_on else "") + ("" if (mail_on or hook_on) else "無効(SMTP_PASSまたはNOTIFY_WEBHOOKを設定)"))
     server.serve_forever()
 
 
