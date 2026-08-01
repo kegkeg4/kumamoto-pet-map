@@ -67,6 +67,14 @@ def db():
     return conn
 
 
+def _ensure_pets_columns(conn):
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(pets)")}
+    for col in ("source", "source_url", "photo_ext", "related_id"):
+        if col not in cols:
+            conn.execute("ALTER TABLE pets ADD COLUMN " + col + " TEXT DEFAULT ''")
+    conn.commit()
+
+
 def init_db():
     os.makedirs(UPLOAD_DIR, exist_ok=True)
     conn = db()
@@ -97,7 +105,8 @@ def init_db():
           created_at TEXT,
           source TEXT DEFAULT '',
           source_url TEXT DEFAULT '',
-          photo_ext TEXT DEFAULT ''
+          photo_ext TEXT DEFAULT '',
+          related_id TEXT DEFAULT ''
         );
         CREATE TABLE IF NOT EXISTS sightings(
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -130,6 +139,7 @@ def init_db():
         """
     )
     conn.commit()
+    _ensure_pets_columns(conn)
     conn.close()
 
 
@@ -170,6 +180,7 @@ def pet_public(row, include_contact=False):
         "source": (row["source"] if "source" in row.keys() else ""),
         "source_url": (row["source_url"] if "source_url" in row.keys() else ""),
         "photo_ext": (row["photo_ext"] if "photo_ext" in row.keys() else ""),
+        "related_id": (row["related_id"] if "related_id" in row.keys() else ""),
         "contact_public": bool(row["contact_public"]),
         "contact": row["contact"] if (include_contact and row["contact_public"]) else "",
     }
@@ -433,11 +444,18 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_json({"error": "登録回数の上限に達しました。時間をおいてお試しください"}, 429)
             pid = short_id()
             token = secrets.token_urlsafe(16)
+            related_id = ""
+            rel = str(body.get("related") or "")
+            if kind == "found" and re.fullmatch(r"[a-z0-9]{8}", rel):
+                lost_row = conn.execute(
+                    "SELECT id FROM pets WHERE id=? AND kind='lost' AND hidden=0", (rel,)).fetchone()
+                if lost_row:
+                    related_id = rel
             conn.execute(
                 """INSERT INTO pets(id, admin_token, kind, species, name, breed, size, color,
                    features, event_at, lat, lng, address, collar, microchip, contact,
-                   contact_public, shelter_info, photos, status, created_at)
-                   VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                   contact_public, shelter_info, photos, status, created_at, related_id)
+                   VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (pid, token, kind, species, name,
                  (body.get("breed") or "").strip()[:30], size,
                  (body.get("color") or "").strip()[:30],
@@ -451,7 +469,7 @@ class Handler(BaseHTTPRequestHandler):
                  (body.get("shelter_info") or "").strip()[:200],
                  json.dumps(photos),
                  "searching" if kind == "lost" else "sheltering",
-                 now_iso()))
+                 now_iso(), related_id))
             conn.commit(); conn.close()
         self.send_json({"id": pid, "admin_token": token})
 
@@ -476,8 +494,20 @@ class Handler(BaseHTTPRequestHandler):
                 "SELECT * FROM pets WHERE hidden=0 AND kind=? AND status=? AND species=? "
                 "ORDER BY created_at DESC LIMIT 6",
                 (other_kind, other_status, row["species"])).fetchall()
+            rescues = []
+            related_name = ""
+            if row["kind"] == "lost":
+                rescues = conn.execute(
+                    "SELECT id, name, status, created_at, address FROM pets "
+                    "WHERE related_id=? AND kind='found' AND hidden=0 ORDER BY created_at DESC LIMIT 5",
+                    (pid,)).fetchall()
+            elif ("related_id" in row.keys()) and row["related_id"]:
+                rl = conn.execute("SELECT name FROM pets WHERE id=?", (row["related_id"],)).fetchone()
+                related_name = (rl["name"] if rl else "") or "(名前なし)"
             conn.close()
         d = pet_public(row, include_contact=True)
+        d["rescues"] = [dict(r) for r in rescues]
+        d["related_name"] = related_name
         d["sightings"] = [dict(s) for s in sightings]
         d["searched"] = [dict(c) for c in cells]
         d["updates"] = [dict(u) for u in ups]
