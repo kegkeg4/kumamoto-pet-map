@@ -298,7 +298,7 @@ footer a{color:#E4C878}
 <footer>
   <p>くまもとペット捜索マップ — 令和8年熊本地震 災害対応・完全無料</p>
   <p style="margin-top:6px">掲載情報は投稿者によるものです。悪質な投稿は各ページの通報ボタンからお知らせください。</p>
-  <p style="margin-top:6px">運営: 合同会社CRK(熊本市) / <a href="#/terms">利用規約・プライバシー</a></p>
+  <p style="margin-top:6px">運営: 合同会社CRK(熊本市) / <a href="#/terms">利用規約・プライバシー</a> / <a href="#/contact">お問い合わせ</a></p>
 </footer>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
@@ -399,6 +399,7 @@ function route(){
   if(h === "/info") return viewInfo();
   if(h === "/admin") return viewAdmin();
   if(h === "/terms") return viewTerms();
+  if(h === "/contact") return viewContact();
   if((m = h.match(/^\/done\/([a-z0-9]{8})\/(.+)$/))) return viewDone(m[1], m[2]);
   if((m = h.match(/^\/pet\/([a-z0-9]{8})(?:\?token=(.+))?$/))) return viewDetail(m[1], m[2]||"");
   if((m = h.match(/^\/flyer\/([a-z0-9]{8})$/))) return viewFlyer(m[1]);
@@ -423,6 +424,7 @@ function viewHome(){
       '<div><span>2</span>みんなが<br>「見かけた!」を送る</div>'+
       '<div><span>3</span>地図をたよりに<br>おうちへ</div>'+
     '</div>'+
+    '<div id="news-box"></div>'+
     '<div class="stats" id="stats"></div>'+
   '</div>'+
   '<div class="board-tabs">'+
@@ -436,7 +438,17 @@ function viewHome(){
   '<div id="pet-list" class="loading">読み込み中…</div>'+
   '<section style="margin-top:34px"><h2>再会できた子たち</h2><div id="reunited-list" class="loading">読み込み中…</div></section>';
 
-  api("/api/stats").then(function(s){
+  api("/api/news").then(function(n){
+    if(!n.news.length) return;
+    document.getElementById("news-box").innerHTML =
+      '<div style="background:#FFF8E8;border:1.5px solid var(--brass);border-radius:14px;padding:13px 16px;margin-top:16px">'+
+        '<h3 style="font-family:var(--fd);font-size:15px;color:var(--brass-deep);margin-bottom:6px">📢 おしらせ</h3>'+
+        n.news.slice(0,3).map(function(x){
+          return '<div style="font-size:13.5px;margin-top:6px;line-height:1.8"><span style="color:var(--ink-soft);font-size:11.5px">'+fmtDate(x.created_at)+'</span><br>'+esc(x.body).replace(/\n/g,"<br>")+'</div>';
+        }).join("")+
+      '</div>';
+  }).catch(function(){});
+    api("/api/stats").then(function(s){
     document.getElementById("stats").innerHTML =
       '<div class="stat"><b>'+s.lost_active+'<em>件</em></b><span>さがしています</span></div>'+
       '<div class="stat"><b>'+s.found_active+'<em>件</em></b><span>保護しています</span></div>'+
@@ -848,7 +860,7 @@ function viewDetail(id, token){
           (d.related_id
             ? '<div style="background:#E8F3E9;border:1.5px solid #7FAE8B;border-radius:12px;padding:11px 14px;font-size:13.5px;margin-top:12px">🔗 この報告は「<b>'+esc(d.related_name)+'</b>」をさがしています掲載への保護報告です。<div style="margin-top:8px"><a class="btn btn-secondary sm" href="#/pet/'+d.related_id+'">さがしています掲載を見る</a></div></div>'
             : '')+
-          (d.source==="sns"?'<div style="background:#F3EDF8;border:1.5px solid #C9B8DC;border-radius:12px;padding:11px 14px;font-size:13px;margin-top:12px">📣 <b>SNSで拡散されている捜索チラシ</b>の情報です。連絡先はチラシ記載の窓口(団体・ご本人)です。ご本人からの修正・削除のご依頼は<a href="#/terms">運営</a>まで。</div>':'')+
+          (d.source==="sns"?'<div style="background:#F3EDF8;border:1.5px solid #C9B8DC;border-radius:12px;padding:11px 14px;font-size:13px;margin-top:12px">📣 <b>SNSで拡散されている捜索チラシ</b>の情報です。連絡先はチラシ記載の窓口(団体・ご本人)です。ご本人からの修正・削除のご依頼は<a href="#/contact">お問い合わせ</a>から。</div>':'')+
           (d.source==="city"?'<div style="background:#EDF2F7;border:1.5px solid #B9C9D8;border-radius:12px;padding:11px 14px;font-size:13px;margin-top:12px">🏛 <b>熊本市動物愛護センターの掲載情報</b>です(地図はおおよその位置)。写真・最新状況は元記事でご確認ください。<div style="margin-top:8px"><a class="btn btn-secondary sm" href="'+esc(d.source_url)+'" target="_blank" rel="noopener">元記事を見る(熊本市サイト)</a></div></div>':'')+
           '<div class="action-bar no-print">'+
             (isLost && d.status==="searching"?'<button class="btn btn-primary sm" id="btn-sight">👀 見かけた!を知らせる</button>':'')+
@@ -1338,6 +1350,7 @@ function viewInfo(){
   '</section>'+
   '<section>'+
     '<h2>避難生活とペット</h2>'+
+    '<div class="office"><b>💬 このサイトへのお問い合わせ</b><p>機能のご要望・不具合・掲載の削除依頼はこちらから。</p><div style="margin-top:8px"><a class="btn btn-secondary sm" href="#/contact">お問い合わせフォーム</a></div></div>'+
     '<div class="office"><b>🚗 車中泊・停電時の熱中症に注意</b><p>真夏の車内は短時間で危険な温度になります。換気・日陰・水を確保し、犬の激しいパンティング・大量のよだれ、猫の開口呼吸は危険なサインです。異変があればすぐ動物病院へ。</p></div>'+
     '<div class="office"><b>🏠 同伴避難</b><p>避難所ごとにペットの受け入れ方針が異なります。自治体の発表や避難所の掲示を確認し、ケージ・リード・数日分のフードを準備してください。</p></div>'+
     '<p class="hint">※各機関の連絡先・受付時間は変更される場合があります。必ず公式サイトで最新情報をご確認ください。</p>'+
@@ -1348,6 +1361,57 @@ function viewInfo(){
     st[e.target.getAttribute("data-i")]=e.target.checked;
     localStorage.setItem("kpm-checklist", JSON.stringify(st));
     e.target.closest("li").classList.toggle("done", e.target.checked);
+  });
+}
+
+/* ---------- お問い合わせ ---------- */
+function viewContact(){
+  app.innerHTML =
+  '<section class="fade-in" style="max-width:640px">'+
+    '<a href="#/" style="display:inline-flex;align-items:center;gap:6px;margin-top:16px;font-size:14px;font-weight:700;color:var(--pine-deep);text-decoration:none;background:#fff;border:1.5px solid var(--line);border-radius:999px;padding:8px 16px">← ホームにもどる</a>'+
+    '<h2 style="margin-top:18px">お問い合わせ</h2>'+
+    '<div class="panel">'+
+      '<label>内容の種類</label>'+
+      '<div class="sp-toggle" style="grid-template-columns:repeat(2,1fr)" id="c-cats">'+
+        '<button data-c="feature">💡 追加してほしい機能</button>'+
+        '<button data-c="delete">🗑 情報の削除のお願い</button>'+
+        '<button data-c="bug">🐞 不具合の報告</button>'+
+        '<button data-c="other">💬 その他のご意見</button>'+
+      '</div>'+
+      '<div id="c-url-wrap" class="hidden"><label>対象のページ <span class="opt">削除してほしい掲載のURLやペットの名前</span></label>'+
+      '<input id="c-url" maxlength="300" placeholder="例: '+location.origin+'/#/pet/xxxx または「ミルク(猫)」"></div>'+
+      '<label>内容 <span class="opt">必須</span></label>'+
+      '<textarea id="c-body" rows="5" maxlength="2000" placeholder="できるだけ具体的に書いていただけると助かります"></textarea>'+
+      '<label>返信用の連絡先 <span class="opt">任意・メールなど</span></label>'+
+      '<input id="c-contact" maxlength="100" placeholder="例: mail@example.com">'+
+      '<input id="c-web" style="display:none" tabindex="-1" autocomplete="off">'+
+      '<div style="margin-top:16px"><button class="btn btn-secondary" id="c-send" style="width:100%">送信する</button></div>'+
+      '<p class="hint" style="margin-top:10px">削除のお願いは、ご本人確認のうえ速やかに対応します。不具合報告・機能のご要望は今後の改善に活かします。</p>'+
+    '</div>'+
+  '</section>';
+  var cat = "";
+  Array.prototype.forEach.call(document.querySelectorAll("#c-cats button"), function(b){
+    b.addEventListener("click", function(){
+      cat = b.getAttribute("data-c");
+      Array.prototype.forEach.call(document.querySelectorAll("#c-cats button"), function(x){ x.classList.toggle("on", x===b); });
+      document.getElementById("c-url-wrap").classList.toggle("hidden", cat!=="delete");
+    });
+  });
+  document.getElementById("c-send").addEventListener("click", function(){
+    var btn = this;
+    if(!cat){ alert("内容の種類を選んでください"); return; }
+    btn.disabled = true;
+    api("/api/contact",{method:"POST",body:{
+      category:cat, body:document.getElementById("c-body").value,
+      contact:document.getElementById("c-contact").value,
+      url:document.getElementById("c-url").value,
+      website:document.getElementById("c-web").value
+    }}).then(function(){
+      app.innerHTML = '<section class="fade-in" style="max-width:560px;text-align:center;padding:56px 0">'+
+        '<div style="font-size:52px">🐾</div><h2 style="justify-content:center">送信しました</h2>'+
+        '<p style="margin-top:8px">ありがとうございます。内容を確認して対応します。</p>'+
+        '<a class="btn btn-secondary" style="margin-top:18px" href="#/">ホームにもどる</a></section>';
+    }).catch(function(e){ alert(e.message); btn.disabled=false; });
   });
 }
 
@@ -1384,14 +1448,53 @@ function viewAdmin(){
     }
     app.innerHTML =
     '<section class="fade-in">'+
-      '<h2 style="margin-top:22px">運営管理 — 通報・非表示の対応</h2>'+
+      '<h2 style="margin-top:22px">📢 おしらせ管理(トップに表示)</h2>'+
+      '<div class="panel">'+
+        '<textarea id="nw-body" rows="2" maxlength="500" placeholder="例: 愛護センターの掲載情報の自動取込を開始しました"></textarea>'+
+        '<button class="btn btn-secondary sm" id="nw-add" style="margin-top:8px">追加する</button>'+
+        '<div id="nw-list" style="margin-top:10px">'+
+          (d.news||[]).map(function(x){
+            return '<div style="display:flex;gap:8px;align-items:center;border-top:1px dashed var(--line);padding:8px 0;font-size:13px"><div style="flex:1">'+esc(x.body)+'<br><span class="hint">'+fmtDate(x.created_at)+'</span></div><button class="btn btn-ghost sm" data-nwdel="'+x.id+'">削除</button></div>';
+          }).join("")+
+        '</div>'+
+      '</div>'+
+      '<h2 style="margin-top:26px">💬 お問い合わせ('+((d.inquiries||[]).filter(function(q){return q.status==="new";}).length)+'件が未対応)</h2>'+
+      (d.inquiries&&d.inquiries.length ? d.inquiries.map(function(q){
+        var CAT={feature:"💡 機能要望",delete:"🗑 削除依頼",bug:"🐞 不具合",other:"💬 意見"};
+        return '<div class="office" style="'+(q.status==="done"?"opacity:.55":"")+'"><b>'+(CAT[q.category]||q.category)+'</b> <span class="hint">'+fmtDate(q.created_at)+(q.status==="done"?" / 対応済み":"")+'</span>'+
+          '<p style="white-space:pre-wrap">'+esc(q.body)+'</p>'+
+          (q.url?'<p class="hint">対象: '+esc(q.url)+'</p>':'')+
+          (q.contact?'<p class="hint">連絡先: '+esc(q.contact)+'</p>':'')+
+          (q.status!=="done"?'<button class="btn btn-secondary sm" style="margin-top:6px" data-qdone="'+q.id+'">対応済みにする</button>':'')+
+        '</div>';
+      }).join(""):'<div class="empty">お問い合わせはありません</div>')+
+      '<h2 style="margin-top:26px">運営管理 — 通報・非表示の対応</h2>'+
       '<p class="hint" style="margin-bottom:14px">通報が3件たまると自動で非表示になります。内容を確認し、問題なければ「復帰」を。</p>'+
       '<h3 style="font-family:var(--fd);font-size:15px;margin:14px 0 8px">掲載('+d.pets.length+'件)</h3>'+
       (d.pets.length?d.pets.map(function(p){return row(p,"pets");}).join(""):'<div class="empty">対応が必要な掲載はありません</div>')+
       '<h3 style="font-family:var(--fd);font-size:15px;margin:18px 0 8px">目撃情報('+d.sightings.length+'件)</h3>'+
       (d.sightings.length?d.sightings.map(function(s){return row(s,"sightings");}).join(""):'<div class="empty">対応が必要な目撃情報はありません</div>')+
     '</section>';
-    Array.prototype.forEach.call(document.querySelectorAll("[data-a]"), function(b){
+    document.getElementById("nw-add").addEventListener("click", function(){
+      var t = document.getElementById("nw-body").value.trim();
+      if(!t){ alert("内容を入力してください"); return; }
+      api("/api/admin/news",{method:"POST",body:{key:key,action:"add",body:t}})
+        .then(function(){ viewAdmin(); }).catch(function(e){ alert(e.message); });
+    });
+    Array.prototype.forEach.call(document.querySelectorAll("[data-nwdel]"), function(b){
+      b.addEventListener("click", function(){
+        if(!confirm("このおしらせを削除しますか?")) return;
+        api("/api/admin/news",{method:"POST",body:{key:key,action:"delete",id:b.getAttribute("data-nwdel")}})
+          .then(function(){ viewAdmin(); }).catch(function(e){ alert(e.message); });
+      });
+    });
+    Array.prototype.forEach.call(document.querySelectorAll("[data-qdone]"), function(b){
+      b.addEventListener("click", function(){
+        api("/api/admin/inquiry",{method:"POST",body:{key:key,id:b.getAttribute("data-qdone")}})
+          .then(function(){ viewAdmin(); }).catch(function(e){ alert(e.message); });
+      });
+    });
+        Array.prototype.forEach.call(document.querySelectorAll("[data-a]"), function(b){
       b.addEventListener("click", function(){
         api("/api/admin/moderate",{method:"POST",body:{
           key:key, table:b.getAttribute("data-t"), id:b.getAttribute("data-id"), action:b.getAttribute("data-a")
@@ -1430,7 +1533,7 @@ function viewTerms(){
       '・捜索の際はご自身の安全を最優先してください。余震・倒壊のおそれのある場所には立ち入らないでください。<br>'+
       '・本サイトの利用により生じた損害について、運営は責任を負いかねます。</p>'+
       '<h2 style="font-size:16px;margin-top:20px">運営者</h2>'+
-      '<p>合同会社CRK(熊本市中央区新市街13-13 FUTAビル4階)<br>お問い合わせ: crk.jp のお問い合わせフォームより</p>'+
+      '<p>合同会社CRK(熊本市中央区新市街13-13 FUTAビル4階)<br>お問い合わせ: <a href="#/contact">お問い合わせフォーム</a>より</p>'+
     '</div>'+
   '</section>';
 }
