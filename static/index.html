@@ -560,6 +560,14 @@ function viewRegister(kind){
   '<section class="fade-in">'+
     '<a href="#/" style="display:inline-flex;align-items:center;gap:6px;margin-top:16px;font-size:14px;font-weight:700;color:var(--pine-deep);text-decoration:none;background:#fff;border:1.5px solid var(--line);border-radius:999px;padding:8px 16px">← ホームにもどる</a>'+
     '<h2 style="margin-top:22px">'+(kind==="lost"?"いなくなった子の登録":"保護した子の登録")+'</h2>'+
+    '<div class="panel" style="border:2px dashed var(--brass);background:#FFFBF0;margin-bottom:16px">'+
+      '<h3 style="font-family:var(--fd);font-size:16px;color:var(--brass-deep)">📸 チラシのスクショがあれば、それだけでOK</h3>'+
+      '<p class="hint" style="margin:6px 0 10px">SNSで見かけた捜索チラシや、お手元のチラシの写真を選ぶと、AIが読み取ってそのまま掲載します(1枚に1匹)。すでに掲載されている子は重複登録されません。</p>'+
+      '<input type="file" id="in-file" accept="image/*">'+
+      '<button class="btn btn-brass" id="in-go" style="width:100%;margin-top:10px">読み取って登録する</button>'+
+      '<div id="in-log" style="font-size:13.5px;margin-top:10px;line-height:1.9"></div>'+
+      '<p class="hint" style="margin-top:8px">↓ 自分で入力する場合はこちらから</p>'+
+    '</div>'+
     '<div class="panel">'+
       '<div class="msg" id="reg-msg"></div>'+
       '<label>登録の種類</label>'+
@@ -656,6 +664,29 @@ function viewRegister(kind){
   map.on("click", function(e){
     picked = e.latlng;
     if(marker) marker.setLatLng(e.latlng); else marker = L.marker(e.latlng).addTo(map);
+  });
+  document.getElementById("in-go").addEventListener("click", function(){
+    var f = document.getElementById("in-file").files[0];
+    var log = document.getElementById("in-log");
+    if(!f){ log.innerHTML = '<span style="color:var(--clay)">先に画像を選んでください</span>'; return; }
+    var btn = this; btn.disabled = true; btn.textContent = "読み取り中…(10秒ほど)";
+    log.textContent = "画像をアップロード中…";
+    resizeImage(f).then(function(dataUrl){
+      return api("/api/upload", {method:"POST", body:{data:dataUrl}});
+    }).then(function(up){
+      log.textContent = "AIがチラシを読み取り中…";
+      return api("/api/intake", {method:"POST", body:{photo:up.file}});
+    }).then(function(r){
+      if(r.action === "duplicate"){
+        log.innerHTML = '⚠ この子はすでに掲載されています: <a href="#/pet/'+r.match.id+'"><b>'+esc(r.match.name)+'</b> の掲載を見る</a>';
+        btn.disabled=false; btn.textContent="読み取って登録する";
+      } else {
+        location.hash = "/done/"+r.id+"/"+r.token;
+      }
+    }).catch(function(e){
+      log.innerHTML = '<span style="color:var(--clay)">'+esc(e.message)+'</span>';
+      btn.disabled=false; btn.textContent="読み取って登録する";
+    });
   });
   document.getElementById("f-gps").addEventListener("click", function(){
     var b=this;
@@ -1315,47 +1346,13 @@ function viewAdmin(){
     }
     app.innerHTML =
     '<section class="fade-in">'+
-      '<h2 style="margin-top:22px">📸 スクショから登録(チラシ読み取り)</h2>'+
-      '<div class="panel">'+
-        '<p class="hint">InstagramのストーリーやXで拡散されているチラシのスクショを選ぶと、AIが内容を読み取って掲載します(1枚に1匹)。同じ子はスキップされます。</p>'+
-        '<input type="file" id="ad-file" accept="image/*" style="margin:10px 0">'+
-        '<button class="btn btn-secondary" id="ad-intake" style="width:100%">読み取って登録する</button>'+
-        '<div id="ad-log" style="font-size:13.5px;margin-top:10px;line-height:1.9"></div>'+
-      '</div>'+
-      '<h2 style="margin-top:26px">運営管理 — 通報・非表示の対応</h2>'+
+      '<h2 style="margin-top:22px">運営管理 — 通報・非表示の対応</h2>'+
       '<p class="hint" style="margin-bottom:14px">通報が3件たまると自動で非表示になります。内容を確認し、問題なければ「復帰」を。</p>'+
       '<h3 style="font-family:var(--fd);font-size:15px;margin:14px 0 8px">掲載('+d.pets.length+'件)</h3>'+
       (d.pets.length?d.pets.map(function(p){return row(p,"pets");}).join(""):'<div class="empty">対応が必要な掲載はありません</div>')+
       '<h3 style="font-family:var(--fd);font-size:15px;margin:18px 0 8px">目撃情報('+d.sightings.length+'件)</h3>'+
       (d.sightings.length?d.sightings.map(function(s){return row(s,"sightings");}).join(""):'<div class="empty">対応が必要な目撃情報はありません</div>')+
     '</section>';
-    document.getElementById("ad-intake").addEventListener("click", function(){
-      var f = document.getElementById("ad-file").files[0];
-      var log = document.getElementById("ad-log");
-      if(!f){ log.innerHTML = '<span style="color:var(--clay)">先に画像を選んでください</span>'; return; }
-      var btn = this; btn.disabled = true; btn.textContent = "読み取り中…(10秒ほど)";
-      log.textContent = "画像をアップロード中…";
-      resizeImage(f).then(function(dataUrl){
-        return api("/api/upload", {method:"POST", body:{data:dataUrl}});
-      }).then(function(up){
-        log.textContent = "AIがチラシを読み取り中…";
-        return api("/api/admin/intake", {method:"POST", body:{key:key, photo:up.file}});
-      }).then(function(r){
-        if(r.action === "duplicate"){
-          log.innerHTML = '⚠ すでに掲載があるためスキップしました: <a href="#/pet/'+r.match.id+'">'+esc(r.match.name)+'</a>';
-        } else {
-          var s = r.summary;
-          log.innerHTML = '✅ 登録しました: <a href="#/pet/'+r.id+'"><b>'+esc(s.name||"(名前なし)")+'</b>('+
-            (s.kind==="lost"?"さがしています":"保護しています")+' / '+esc(s.place||"場所不明")+')</a><br>'+
-            '<span class="hint">内容が違う場合はリンク先を確認し、必要なら通報→非表示で対応してください。</span>';
-        }
-        btn.disabled=false; btn.textContent="読み取って登録する";
-        document.getElementById("ad-file").value="";
-      }).catch(function(e){
-        log.innerHTML = '<span style="color:var(--clay)">'+esc(e.message)+'</span>';
-        btn.disabled=false; btn.textContent="読み取って登録する";
-      });
-    });
     Array.prototype.forEach.call(document.querySelectorAll("[data-a]"), function(b){
       b.addEventListener("click", function(){
         api("/api/admin/moderate",{method:"POST",body:{
