@@ -1448,6 +1448,9 @@ function viewAdmin(){
     }
     app.innerHTML =
     '<section class="fade-in">'+
+      '<h2 style="margin-top:22px">💾 バックアップ</h2>'+
+      '<div class="panel"><p class="hint">掲載データと写真を丸ごとzipで保存します。週1回のダウンロードをおすすめします。</p>'+
+        '<a class="btn btn-secondary sm" style="margin-top:8px" href="/api/admin/backup?key='+encodeURIComponent(key)+'" download>データをダウンロード</a></div>'+
       '<h2 style="margin-top:22px">📢 おしらせ管理(トップに表示)</h2>'+
       '<div class="panel">'+
         '<textarea id="nw-body" rows="2" maxlength="500" placeholder="例: 愛護センターの掲載情報の自動取込を開始しました"></textarea>'+
