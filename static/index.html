@@ -450,6 +450,7 @@ function viewHome(){
   }).catch(function(){});
     api("/api/stats").then(function(s){
     document.getElementById("stats").innerHTML =
+      (s.today_new>0?'<div class="stat"><b style="color:var(--clay)">🆕 '+s.today_new+'<em>件</em></b><span>本日の新着</span></div>':'')+
       '<div class="stat"><b>'+s.lost_active+'<em>件</em></b><span>さがしています</span></div>'+
       '<div class="stat"><b>'+s.found_active+'<em>件</em></b><span>保護しています</span></div>'+
       '<div class="stat"><b>'+s.reunited+'<em>件</em></b><span>再会できました</span></div>';
