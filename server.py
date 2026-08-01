@@ -30,6 +30,7 @@ LNG_RANGE = (129.8, 131.6)
 
 RATE_LIMITS = {
     "register": (10, 86400),  # 災害時につき通常より緩め: 登録10件/日
+    "intake":   (8, 86400),   # チラシ読み取り登録8件/日(AI費用対策)
     "sighting": (30, 3600),
     "generate": (10, 3600),
     "upload":   (30, 3600),
@@ -332,8 +333,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.api_upload()
         if path == "/api/admin/moderate":
             return self.api_admin_moderate()
-        if path == "/api/admin/intake":
-            return self.api_admin_intake()
+        if path == "/api/intake":
+            return self.api_intake()
         m = re.fullmatch(r"/api/pets/([a-z0-9]{8})/(sightings|searched|updates|flag)", path)
         if m:
             return {"sightings": self.api_create_sighting,
@@ -664,10 +665,15 @@ class Handler(BaseHTTPRequestHandler):
             conn.commit(); conn.close()
         self.send_json({"ok": True})
 
-    def api_admin_intake(self):
+    def api_intake(self):
         body = self.read_json() or {}
-        if not ADMIN_KEY or not secrets.compare_digest(str(body.get("key") or ""), ADMIN_KEY):
-            return self.send_json({"error": "権限がありません"}, 403)
+        iph = ip_hash(self.client_ip())
+        with _db_lock:
+            conn = db()
+            ok = check_rate(conn, iph, "intake")
+            conn.commit(); conn.close()
+        if not ok:
+            return self.send_json({"error": "本日の読み取り回数の上限に達しました。手動での登録は引き続き可能です"}, 429)
         photo = re.sub(r"[^a-z0-9.]", "", str(body.get("photo") or ""))
         img_path = os.path.join(UPLOAD_DIR, photo)
         if not photo or not os.path.isfile(img_path):
@@ -675,6 +681,8 @@ class Handler(BaseHTTPRequestHandler):
         info, err = claude_flyer_extract(img_path)
         if err:
             return self.send_json({"error": err}, 502)
+        if not info.get("valid", True):
+            return self.send_json({"error": "ペット捜索のチラシとして読み取れませんでした。チラシ全体が写ったスクショでもう一度お試しください"}, 422)
         kind = "found" if str(info.get("kind", "")).startswith("found") else "lost"
         species = info.get("species") if info.get("species") in ("dog", "cat", "other") else "other"
         name = str(info.get("name") or "").strip()[:30]
@@ -703,6 +711,7 @@ class Handler(BaseHTTPRequestHandler):
                 event_at = datetime.now(JST).strftime("%Y-%m-%dT12:00")
             lat, lng = sns_geocode(place)
             pid = short_id(8)
+            token = short_id(24)
             features = str(info.get("features") or "")[:400]
             if place:
                 features = (features + "\n※地図はおおよその位置です(SNSチラシからの転載)")[:500]
@@ -711,13 +720,13 @@ class Handler(BaseHTTPRequestHandler):
                    features, event_at, lat, lng, address, collar, microchip, contact,
                    contact_public, shelter_info, photos, status, created_at, source, source_url, photo_ext)
                    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-                (pid, "", kind, species, name, str(info.get("breed") or "")[:40], "medium",
+                (pid, token, kind, species, name, str(info.get("breed") or "")[:40], "medium",
                  str(info.get("color") or "")[:40], features, event_at, lat, lng, place,
                  0, 0, contact, 1, "SNSで拡散されている捜索チラシの情報",
                  json.dumps([photo]), "sheltering" if kind == "found" else "searching",
                  datetime.now(JST).isoformat(timespec="seconds"), "sns", "", ""))
             conn.commit(); conn.close()
-        return self.send_json({"ok": True, "action": "added", "id": pid,
+        return self.send_json({"ok": True, "action": "added", "id": pid, "token": token,
                                "summary": {"kind": kind, "species": species, "name": name,
                                            "place": place, "contact": contact}})
 
@@ -803,9 +812,10 @@ def claude_flyer_extract(img_path):
     with open(img_path, "rb") as f:
         b64 = base64.b64encode(f.read()).decode()
     prompt = (
-        "これは迷子ペットまたは保護ペットのチラシ/SNS投稿のスクリーンショットです。"
+        "画像が迷子ペット捜索または保護ペットのチラシ/SNS投稿かどうかをまず判定してください。"
+        "違う場合は {\"valid\":false} のみ出力。チラシの場合は次のJSONを出力: "
         "記載内容だけを読み取り、必ずJSONのみで出力してください(推測で創作しない。不明は空文字)。\n"
-        '{"kind":"lost(探しています)またはfound(保護しています)",'
+        '{"valid":true,"kind":"lost(探しています)またはfound(保護しています)",'
         '"species":"dog/cat/other","name":"ペットの名前","breed":"品種",'
         '"color":"毛色","features":"特徴(性別・年齢・体格・首輪・健康上の注意など)",'
         '"event_date":"いなくなった/保護した日付(例 2026年7月28日)",'
