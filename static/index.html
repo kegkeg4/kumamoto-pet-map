@@ -288,8 +288,8 @@ footer a{color:#E4C878}
   </div>
   <nav class="mainnav">
     <a href="#/" data-nav="home">🏠 ホーム</a>
-    <a href="#/info" data-nav="info">📞 窓口・注意</a>
     <a href="#/register" data-nav="register" class="cta">➕ 迷子・保護を登録</a>
+    <a href="#/info" data-nav="info">📞 窓口・注意</a>
   </nav>
 </header>
 
@@ -298,7 +298,7 @@ footer a{color:#E4C878}
 <footer>
   <p>くまもとペット捜索マップ — 熊本の迷子ペットと飼い主さんを繋ぐ・完全無料</p>
   <p style="margin-top:6px">掲載情報は投稿者によるものです。悪質な投稿は各ページの通報ボタンからお知らせください。</p>
-  <p style="margin-top:6px">運営: 合同会社CRK(熊本市) / <a href="#/terms">利用規約・プライバシー</a> / <a href="#/contact">お問い合わせ</a></p>
+  <p style="margin-top:6px">運営: 合同会社CRK(熊本市) / <a href="#/guide">つかいかた</a> / <a href="#/terms">利用規約・プライバシー</a> / <a href="#/contact">お問い合わせ</a></p>
 </footer>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
@@ -400,6 +400,7 @@ function route(){
   if(h === "/admin") return viewAdmin();
   if(h === "/terms") return viewTerms();
   if(h === "/contact") return viewContact();
+  if(h === "/guide") return viewGuide();
   if((m = h.match(/^\/done\/([a-z0-9]{8})\/(.+)$/))) return viewDone(m[1], m[2]);
   if((m = h.match(/^\/pet\/([a-z0-9]{8})(?:\?token=(.+))?$/))) return viewDetail(m[1], m[2]||"");
   if((m = h.match(/^\/flyer\/([a-z0-9]{8})$/))) return viewFlyer(m[1]);
@@ -419,11 +420,12 @@ function viewHome(){
       '<a class="btn btn-primary" href="#/register">🔍 いなくなった子を さがす</a>'+
       '<a class="btn btn-found" href="#/register/found">🏠 保護した子を 知らせる</a>'+
     '</div>'+
-    '<div class="howto">'+
+    '<a class="howto" href="#/guide" style="text-decoration:none;color:inherit">'+
       '<div><span>1</span>いなくなったら<br>すぐ登録</div>'+
       '<div><span>2</span>みんなが<br>「見かけた!」を送る</div>'+
       '<div><span>3</span>地図をたよりに<br>おうちへ</div>'+
-    '</div>'+
+    '</a>'+
+    '<p class="hint" style="text-align:center;margin-top:8px"><a href="#/guide" style="color:var(--brass-deep);font-weight:700">📖 くわしいつかいかたを見る →</a></p>'+
     '<div id="news-box"></div>'+
     '<div class="stats" id="stats"></div>'+
   '</div>'+
@@ -1363,6 +1365,59 @@ function viewInfo(){
     localStorage.setItem("kpm-checklist", JSON.stringify(st));
     e.target.closest("li").classList.toggle("done", e.target.checked);
   });
+}
+
+/* ---------- つかいかたガイド ---------- */
+function viewGuide(){
+  function role(icon, title, color, steps){
+    return '<div class="panel" style="margin-bottom:14px;border-top:5px solid '+color+'">'+
+      '<h3 style="font-family:var(--fd);font-size:17.5px;color:var(--pine-deep)">'+icon+' '+title+'</h3>'+
+      '<ol style="margin:10px 0 0 4px;list-style:none">'+
+      steps.map(function(st, i){
+        return '<li style="display:flex;gap:11px;margin-top:12px;line-height:1.75">'+
+          '<span style="flex:none;width:28px;height:28px;border-radius:50%;background:'+color+';color:#fff;display:inline-flex;align-items:center;justify-content:center;font-family:var(--fd);font-weight:900;font-size:14px">'+(i+1)+'</span>'+
+          '<span style="font-size:14.5px">'+st+'</span></li>';
+      }).join("")+'</ol></div>';
+  }
+  app.innerHTML =
+  '<section class="fade-in" style="max-width:680px">'+
+    '<a href="#/" style="display:inline-flex;align-items:center;gap:6px;margin-top:16px;font-size:14px;font-weight:700;color:var(--pine-deep);text-decoration:none;background:#fff;border:1.5px solid var(--line);border-radius:999px;padding:8px 16px">← ホームにもどる</a>'+
+    '<h2 style="margin-top:18px">つかいかた — あなたはどれ?</h2>'+
+    '<p class="hint" style="margin-bottom:14px">ぜんぶ無料・会員登録なしで使えます。</p>'+
+
+    role("🙋", "うちの子が いなくなった(飼い主さん)", "var(--clay)", [
+      '<a href="#/register"><b>「迷子・保護を登録」</b></a>から、写真といなくなった場所を登録(手元にチラシがあればスクショを選ぶだけでもOK)',
+      '掲載ページの<b>「チラシ / SNS文」</b>ボタンで、印刷用チラシとX・LINE用の文章をAIが自動作成 → 拡散',
+      'だれかが<b>「👀 見かけた!」</b>を送ると、あなたの地図にピンが立ち、<b>さがすとよい範囲</b>が自動で更新されます',
+      'さがしに行くときは<b>「🚶 歩くだけで記録」</b>をON。さがした場所が緑にぬられて、みんなと分担できます',
+      '<b>「🤲 保護しました」の報告</b>が来たら、ページ上部に緑のお知らせが出ます。連絡して確認を'
+    ])+
+
+    role("👀", "迷子らしき子を 見かけた", "var(--brass)", [
+      'ホームの<b>「さがしています」</b>一覧から、その子を探す(🔍しぼりこみで「キジトラ 東区」のように検索)',
+      '見つけたら掲載を開いて<b>「📍 いまいる場所で知らせる」</b>をタップ → ひとこと書いて送信。それだけで飼い主さんに届きます',
+      '一覧にいない子だったら、<b>「保護した子を 知らせる」</b>から目撃情報として登録してもOK',
+      '⚠ 追いかけないでください。驚くと逃げてしまいます。写真が撮れたら添えると確実です'
+    ])+
+
+    role("🤲", "迷子の子を 保護した", "var(--found)", [
+      '「さがしています」に飼い主さんの掲載があれば、そのページの<b>「🤲 この子を保護しました」</b>ボタンから報告(入力は場所と連絡先だけ)',
+      '掲載がなければ<a href="#/register/found"><b>「保護した子を 知らせる」</b></a>から登録。写真があると飼い主さんが見つけやすくなります',
+      'あわせて<b>動物愛護センター(096-380-2153)と警察への連絡</b>もお願いします(拾得物の届け出)',
+      '飼い主さんから連絡が来たら、写真や特徴でその子か確認してから引き渡しを'
+    ])+
+
+    role("📸", "SNSで捜索チラシを 見かけた", "#6E4A8E", [
+      'チラシを<b>スクショ</b>する(Instagramのストーリーなどそのまま)',
+      '<a href="#/register"><b>「迷子・保護を登録」</b></a>を開いて、一番上の<b>「📸 チラシのスクショがあれば、それだけでOK」</b>で画像を選ぶ',
+      'AIが内容を読み取って、そのまま地図に掲載されます(同じ子は重複しません)。流れて消えるSNSの情報を、検索できる地図に残せます'
+    ])+
+
+    '<div class="panel" style="background:#F7F8F1">'+
+      '<h3 style="font-family:var(--fd);font-size:15px;color:var(--pine-deep)">💡 まめちしき</h3>'+
+      '<p style="font-size:13.5px;margin-top:6px;line-height:1.9">・猫は遠くへ行かず、<b>近くの物陰でじっとしている</b>ことがほとんど。掲載ページの点線の円の中を重点的に。<br>・犬はサイズと経過時間で捜索範囲が変わります(地図が自動計算します)。<br>・熊本市動物愛護センターの収容情報(🏛バッジ)は3時間おきに自動で反映されます。</p>'+
+    '</div>'+
+  '</section>';
 }
 
 /* ---------- お問い合わせ ---------- */
