@@ -1504,7 +1504,19 @@ function viewAdmin(){
     }
     app.innerHTML =
     '<section class="fade-in">'+
-      '<h2 style="margin-top:22px">💾 バックアップ</h2>'+
+      '<h2 style="margin-top:22px">📈 アクセス(直近14日)</h2>'+
+      '<div class="panel">'+
+        ((d.traffic&&d.traffic.length)
+          ? '<table class="spec"><tr><th>日付</th><th>訪問者</th><th>表示</th><th>新規掲載</th><th>見かけた!</th></tr>'+
+            d.traffic.map(function(t){
+              var maxUv = Math.max.apply(null, d.traffic.map(function(x){return x.uv;})) || 1;
+              return '<tr><th>'+t.date.slice(5)+'</th>'+
+                '<td><div style="display:flex;align-items:center;gap:7px"><div style="height:9px;border-radius:5px;background:var(--brass);width:'+Math.max(4, Math.round(t.uv/maxUv*90))+'px"></div><b>'+t.uv+'人</b></div></td>'+
+                '<td>'+t.pv+'</td><td>'+(t.posts||0)+'</td><td>'+(t.sights||0)+'</td></tr>';
+            }).join("")+'</table>'
+          : '<p class="hint">まだ集計データがありません(この更新以降のアクセスから記録されます)</p>')+
+      '</div>'+
+      '<h2 style="margin-top:26px">💾 バックアップ</h2>'+
       '<div class="panel"><p class="hint">掲載データと写真を丸ごとzipで保存します。週1回のダウンロードをおすすめします。</p>'+
         '<a class="btn btn-secondary sm" style="margin-top:8px" href="/api/admin/backup?key='+encodeURIComponent(key)+'" download>データをダウンロード</a></div>'+
       '<h2 style="margin-top:22px">📢 おしらせ管理(トップに表示)</h2>'+
@@ -1583,7 +1595,7 @@ function viewTerms(){
       '・虚偽の投稿、他人へのいやがらせ、ペット捜索と無関係な投稿は禁止です。通報が一定数に達した投稿は自動的に非表示となり、運営が確認します。<br>'+
       '・投稿の削除を希望する場合は、登録時の管理用URLから「掲載を終了する」を押すか、下記の運営連絡先までご連絡ください。</p>'+
       '<h2 style="font-size:16px;margin-top:20px">個人情報の取り扱い</h2>'+
-      '<p>・取得する情報は、投稿内容と、スパム対策のための通信情報(ハッシュ化して保存)のみです。<br>'+
+      '<p>・取得する情報は、投稿内容と、スパム対策・匿名のアクセス数集計のための通信情報(復元できない形にハッシュ化して保存)のみです。個人を特定する追跡は行いません。<br>'+
       '・取得した情報はペット捜索の目的にのみ利用し、第三者への提供・広告利用は行いません。<br>'+
       '・位置情報(GPS)は目撃報告・捜索記録のために端末上で取得され、ご本人の操作なしに送信されることはありません。<br>'+
       '・削除依頼には速やかに対応します。</p>'+
