@@ -95,6 +95,31 @@ def notify_admin(text):
 
 _db_lock = threading.Lock()
 
+# 読み取り専用APIの短期キャッシュ(アクセス集中対策)。TTL内は同一レスポンスを返す
+CACHE_TTL = float(os.environ.get("CACHE_TTL", "30"))
+_cache = {}
+_cache_lock = threading.Lock()
+CACHEABLE_PREFIXES = ("/api/pets?", "/api/stats", "/api/news")
+
+
+def cache_get(key):
+    import time as _t
+    with _cache_lock:
+        v = _cache.get(key)
+        if v and v[0] > _t.time():
+            return v[1]
+        if v:
+            _cache.pop(key, None)
+    return None
+
+
+def cache_put(key, body):
+    import time as _t
+    with _cache_lock:
+        if len(_cache) > 200:
+            _cache.clear()
+        _cache[key] = (_t.time() + CACHE_TTL, body)
+
 
 def now_iso():
     return datetime.now(JST).isoformat(timespec="seconds")
@@ -148,6 +173,15 @@ def init_db():
           source_url TEXT DEFAULT '',
           photo_ext TEXT DEFAULT '',
           related_id TEXT DEFAULT ''
+        );
+        CREATE TABLE IF NOT EXISTS pv_daily(
+          date TEXT PRIMARY KEY,
+          hits INTEGER DEFAULT 0
+        );
+        CREATE TABLE IF NOT EXISTS uv_daily(
+          date TEXT NOT NULL,
+          iph TEXT NOT NULL,
+          PRIMARY KEY(date, iph)
         );
         CREATE TABLE IF NOT EXISTS inquiries(
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -321,9 +355,14 @@ class Handler(BaseHTTPRequestHandler):
 
     def send_json(self, obj, status=200):
         payload = json.dumps(obj, ensure_ascii=False).encode()
+        ck = getattr(self, "_cache_key", None)
+        if ck and status == 200:
+            cache_put(ck, payload)
+            self._cache_key = None
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(payload)))
+        self.send_header("X-Cache", "MISS" if ck else "NONE")
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
         self.wfile.write(payload)
@@ -365,6 +404,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         path = self.path.split("?")[0]
         if path in ("/", "/index.html"):
+            self.record_visit()
             return self.serve_file(os.path.join(STATIC_DIR, "index.html"), "text/html; charset=utf-8")
         if path.startswith("/uploads/"):
             name = os.path.basename(path)
@@ -377,6 +417,18 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json({"ok": True})
         if path == "/ogp.png":
             return self.serve_file(os.path.join(STATIC_DIR, "ogp.png"), "image/png")
+        full = self.path
+        if full == "/api/pets" or any(full.startswith(p) for p in CACHEABLE_PREFIXES):
+            hit = cache_get(full)
+            if hit is not None:
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.send_header("X-Cache", "HIT")
+                self.send_header("Content-Length", str(len(hit)))
+                self.end_headers()
+                self.wfile.write(hit)
+                return
+            self._cache_key = full
         if path == "/api/admin/list":
             return self.api_admin_list()
         if path == "/api/admin/backup":
@@ -731,6 +783,20 @@ class Handler(BaseHTTPRequestHandler):
         self.send_json(claude_texts(pet) or template_texts(pet))
 
     # ---------- 管理(通報対応) ----------
+    def record_visit(self):
+        """匿名アクセス集計(日別PV+ハッシュ化IPによる訪問者数)。失敗しても配信は続行"""
+        try:
+            today = datetime.now(JST).strftime("%Y-%m-%d")
+            iph = ip_hash(self.client_ip())
+            with _db_lock:
+                conn = db()
+                conn.execute("INSERT INTO pv_daily(date,hits) VALUES(?,1) "
+                             "ON CONFLICT(date) DO UPDATE SET hits=hits+1", (today,))
+                conn.execute("INSERT OR IGNORE INTO uv_daily(date,iph) VALUES(?,?)", (today, iph))
+                conn.commit(); conn.close()
+        except Exception:
+            pass
+
     def api_admin_backup(self):
         """全データ(DB+写真)のzipバックアップをダウンロード(管理者のみ)"""
         if not ADMIN_KEY or not secrets.compare_digest(self.qs("key"), ADMIN_KEY):
@@ -780,11 +846,18 @@ class Handler(BaseHTTPRequestHandler):
                 "SELECT id, category, body, contact, url, status, created_at FROM inquiries "
                 "ORDER BY (status='new') DESC, id DESC LIMIT 100").fetchall()
             news = conn.execute("SELECT id, body, created_at FROM news ORDER BY id DESC LIMIT 20").fetchall()
+            traffic = conn.execute(
+                "SELECT p.date, p.hits AS pv, "
+                "(SELECT COUNT(*) FROM uv_daily u WHERE u.date=p.date) AS uv, "
+                "(SELECT COUNT(*) FROM pets t WHERE t.created_at LIKE p.date||'%') AS posts, "
+                "(SELECT COUNT(*) FROM sightings sg WHERE sg.created_at LIKE p.date||'%') AS sights "
+                "FROM pv_daily p ORDER BY p.date DESC LIMIT 14").fetchall()
             conn.close()
         self.send_json({"pets": [dict(r) for r in pets],
                         "sightings": [dict(r) for r in sightings],
                         "inquiries": [dict(r) for r in inquiries],
-                        "news": [dict(r) for r in news]})
+                        "news": [dict(r) for r in news],
+                        "traffic": [dict(r) for r in traffic]})
 
     def api_admin_moderate(self):
         body = self.read_json() or {}
@@ -1076,13 +1149,19 @@ def start_city_sync_thread():
     def loop():
         import time as _t
         _t.sleep(30)  # 起動直後を避ける
+        fails = 0
         while True:
             try:
                 import city_sync
                 print("[city_sync] 取込開始")
                 city_sync.sync()
+                fails = 0
             except Exception as e:
+                fails += 1
                 print("[city_sync] エラー(次回に再試行):", e)
+                if fails == 3:
+                    notify_admin("⚠ 愛護センター取込が3回連続で失敗しています: " + str(e)[:150] +
+                                 "\n市サイトの構造変更の可能性。Renderのログを確認してください")
             _t.sleep(interval)
     threading.Thread(target=loop, daemon=True).start()
     print(f"愛護センター自動取込: 有効({interval/3600:.0f}時間おき)")
@@ -1093,6 +1172,7 @@ def main():
     start_city_sync_thread()
     port = int(os.environ.get("PORT", 8000))
     server = ThreadingHTTPServer(("0.0.0.0", port), Handler)
+    notify_admin("🚀 サイトが起動しました(デプロイまたは再起動)")
     print(f"くまもとペット捜索マップ 起動: http://0.0.0.0:{port}")
     print(f"AI生成: {'有効' if os.environ.get('ANTHROPIC_API_KEY') else '無効(テンプレートで動作)'}")
     print(f"管理画面: {'有効(/#/admin)' if ADMIN_KEY else '無効(ADMIN_KEY未設定)'}")
